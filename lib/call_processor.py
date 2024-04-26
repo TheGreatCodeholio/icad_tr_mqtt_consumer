@@ -6,6 +6,7 @@ from lib.audio_file_handler import save_temporary_files, compress_wav, save_temp
 from lib.broadcastify_calls_handler import upload_to_broadcastify_calls
 from lib.config_handler import get_talkgroup_config
 from lib.icad_player_handler import upload_to_icad_player
+from lib.icad_tone_detect_legacy_handler import upload_to_icad_legacy
 from lib.openmhz_handler import upload_to_openmhz
 from lib.rdio_handler import upload_to_rdio
 from lib.tone_detect_handler import get_tones
@@ -46,6 +47,25 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
         m4a_exists = compress_wav(system_config.get("audio_compression", {}),
                                   os.path.join(global_config_data.get("temp_file_path", "/dev/shm"),
                                                call_data.get("filename")))
+
+    # Legacy Tone Detection
+    for icad_detect in system_config.get("icad_tone_detect_legacy", []):
+        if icad_detect.get("enabled", 0) == 1:
+            try:
+                icad_result = upload_to_icad_legacy(icad_detect, global_config_data.get("temp_file_path", "/dev/shm"), call_data)
+                if icad_result:
+                    module_logger.info(f"Successfully uploaded to iCAD Detect server: {icad_detect.get('icad_url')}")
+                else:
+                    raise Exception()
+
+
+            except Exception as e:
+                module_logger.error(f"Failed to upload to iCAD Detect server: {icad_detect.get('icad_url')}. Error: {str(e)}",
+                             exc_info=True)
+                continue
+        else:
+            module_logger.warning(f"iCAD Detect is disabled: {icad_detect.get('icad_url')}")
+            continue
 
     # Tone Detection
     if system_config.get("tone_detection", {}).get("enabled", 0) == 1:

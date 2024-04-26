@@ -53,6 +53,14 @@ default_config = {
                 "sample_rate": 16000,
                 "bitrate": 96
             },
+            "icad_tone_detect_legacy": [
+                {
+                    "enabled": 1,
+                    "talkgroups": [100],
+                    "icad_url": "https://detect.example.com/tone_detect",
+                    "icad_api_key": ""
+                }
+            ],
             "tone_detection": {
                 "enabled": 0,
                 "allowed_talkgroups": ["*"],
