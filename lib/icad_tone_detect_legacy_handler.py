@@ -37,31 +37,3 @@ def upload_to_icad_legacy(icad_data, temp_path, call_data):
         module_logger.error(f'IO error with file: {wav_path}, {e}')
 
     return False
-
-
-def upload_to_icad(icad_data, wav_path, json_path):
-    module_logger.info(f'Uploading to iCAD Tone Detect API: {icad_data["icad_url"]}')
-
-    try:
-        with (open(wav_path, 'rb') as af, open(json_path, 'rb') as jf):
-            files = {'audioFile': af, 'jsonFile': jf}
-            response = requests.post(icad_data['icad_url'], files=files)
-            response.raise_for_status()  # This will raise an error for 4xx and 5xx responses
-            module_logger.info(f'Successfully uploaded to iCAD API: {response.status_code}, {response.text}')
-
-            detect_data = json.loads(response.text)
-            return detect_data
-
-    except FileNotFoundError:
-        module_logger.error(f'File not found: {wav_path} or {json_path}')
-    except requests.exceptions.HTTPError as e:
-        # This captures HTTP errors and logs them. `e.response` contains the response that caused this error.
-        module_logger.error(f'HTTP error uploading to iCAD API: {e.response.status_code}, {e.response.text}')
-    except requests.exceptions.RequestException as e:
-        # This captures other requests-related errors
-        module_logger.error(f'Error uploading to iCAD API: {e}')
-    except IOError as e:
-        # This captures general IO errors (broader than just FileNotFoundError)
-        module_logger.error(f'IO error with file: {wav_path} or {json_path}, {e}')
-
-    return False

@@ -112,6 +112,9 @@ default_config = {
                         "initial_prompt": None,
                         "use_last_as_initial_prompt": False,
                         "word_timestamps": True,
+                        "cut_tones": False,
+                        "cut_pre_tone": 0.5,
+                        "cut_post_tone": 0.5,
                         "amplify_audio": False,
                         "vad_filter": True,
                         "vad_parameters": {
