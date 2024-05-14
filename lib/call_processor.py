@@ -110,8 +110,11 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
         if m4a_url:
             call_data["audio_m4a_url"] = m4a_url
 
-        module_logger.info(f"Archive Complete")
-        module_logger.debug(f"Url Paths:\n{call_data['audio_wav_url']}\n{call_data['audio_m4a_url']}")
+        if wav_url is None and m4a_url is None and json_url is None:
+            module_logger.error("No Files Uploaded to Archive")
+        else:
+            module_logger.info(f"Archive Complete")
+            module_logger.debug(f"Url Paths:\n{call_data.get('audio_wav_url')}\n{call_data.get('audio_m4a_url')}")
 
     # Send to Players
 
