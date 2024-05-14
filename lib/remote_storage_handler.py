@@ -252,7 +252,7 @@ class SCPStorage:
                     try:
                         sftp.rmdir(remote_path)
                     except IOError:
-                        pass  # Directory not empty
+                        pass
                 else:
                     if time.time() - entry.st_mtime >= archive_seconds:
                         sftp.remove(remote_path)
@@ -264,9 +264,10 @@ class SCPStorage:
                 count = 0
                 clean_directory(sftp, archive_path, archive_days * 24 * 3600)
                 module_logger.info(f"Cleaned {count} files remotely.")
+                return count
         except Exception as e:
             module_logger.error(f"Error during remote cleanup: {e}")
-            raise  # Consider re-raising the exception if the caller can handle it
+            return None
 
     @contextmanager
     def _create_sftp_session(self):

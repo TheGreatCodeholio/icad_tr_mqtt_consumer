@@ -30,7 +30,6 @@ def upload_to_broadcastify_calls(broadcastify_config, temp_path, call_data):
     module_logger.info("Uploading to Broadcastify Calls")
 
     broadcastify_url = "https://api.broadcastify.com/call-upload"
-    metadata_path = m4a_file_path.replace(".m4a", ".json")
 
     headers = {
         "User-Agent": "TrunkRecorder1.0"
@@ -55,7 +54,7 @@ def upload_to_broadcastify_calls(broadcastify_config, temp_path, call_data):
 
             module_logger.debug(files)
 
-            response = requests.post(broadcastify_url, files=files)
+            response = requests.post(broadcastify_url, headers=headers, files=files)
             if response.status_code != 200:
                 module_logger.error(
                     f"Failed to upload to Broadcastify Calls: Status {response.status_code}, Response: {response.text}")

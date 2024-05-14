@@ -1,0 +1,139 @@
+{
+  "log_level": 1,
+  "temp_file_path": "/dev/shm",
+  "mqtt": {
+    "hostname": "mqtt.example.com",
+    "port": 1883,
+    "username": "",
+    "password": "",
+    "topic": "trunk_recorder/feeds/audio",
+    "ca_certs": "",
+    "certfile": "",
+    "keyfile": ""
+  },
+  "systems": {
+    "example-system": {
+      "archive": {
+        "enabled": 0,
+        "archive_type": "scp",
+        "archive_path": "",
+        "archive_days": 0,
+        "archive_extensions": [
+          ".wav",
+          ".m4a",
+          ".json"
+        ],
+        "google_cloud": {
+          "project_id": "",
+          "bucket_name": "",
+          "credentials_file": ""
+        },
+        "aws_s3": {
+          "access_key_id": "",
+          "secret_access_key": "",
+          "bucket_name": "",
+          "region": ""
+        },
+        "scp": {
+          "host": "",
+          "port": 22,
+          "user": "",
+          "password": "",
+          "private_key_path": "",
+          "base_url": "https://example.com/audio"
+        },
+        "local": {
+          "base_url": "https://example.com/audio"
+        }
+      },
+      "audio_compression": {
+        "enabled": 0,
+        "sample_rate": 16000,
+        "bitrate": 96
+      },
+      "icad_tone_detect_legacy": [
+        {
+          "enabled": 1,
+          "talkgroups": [
+            100
+          ],
+          "icad_url": "https://detect.example.com/tone_detect",
+          "icad_api_key": ""
+        }
+      ],
+      "tone_detection": {
+        "enabled": 0,
+        "allowed_talkgroups": [
+          "*"
+        ],
+        "matching_threshold": 2,
+        "time_resolution": 100,
+        "tone_a_min_length": 0.8,
+        "tone_b_min_length": 2.8,
+        "long_tone_min_length": 2.0,
+        "hi_low_interval": 0.2,
+        "hi_low_min_alternations": 3
+      },
+      "transcribe": {
+        "enabled": 0,
+        "allowed_talkgroups": [
+          "*"
+        ],
+        "api_url": "",
+        "api_key": ""
+      },
+      "openmhz": {
+        "enabled": 0,
+        "short_name": "example",
+        "api_key": "example-api-key"
+      },
+      "broadcastify_calls": {
+        "enabled": 0,
+        "calls_slot": -1,
+        "system_id": 0,
+        "api_key": ""
+      },
+      "icad_player": {
+        "enabled": 0,
+        "allowed_talkgroups": [
+          "*"
+        ],
+        "api_url": "https://player.example.com/upload-audio",
+        "api_key": ""
+      },
+      "rdio_systems": [
+        {
+          "enabled": 0,
+          "system_id": 1111,
+          "rdio_url": "http://example.com:3000/api/trunk-recorder-call-upload",
+          "rdio_api_key": "example-api-key"
+        }
+      ],
+      "talkgroup_config": {
+        "*": {
+          "whisper": {
+            "language": "en",
+            "beam_size": 5,
+            "best_of": 5,
+            "initial_prompt": null,
+            "use_last_as_initial_prompt": false,
+            "word_timestamps": true,
+            "cut_tones": false,
+            "cut_pre_tone": 0.5,
+            "cut_post_tone": 0.5,
+            "amplify_audio": false,
+            "vad_filter": true,
+            "vad_parameters": {
+              "threshold": 0.3,
+              "min_speech_duration_ms": 250,
+              "max_speech_duration_s": 3600,
+              "min_silence_duration_ms": 400,
+              "window_size_samples": 1024,
+              "speech_pad_ms": 400
+            }
+          }
+        }
+      }
+    }
+  }
+}

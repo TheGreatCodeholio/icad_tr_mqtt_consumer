@@ -63,7 +63,7 @@ def clean_temp_files(tmp_path, call_data):
         os.remove(json_path)
 
 def compress_wav(compression_config, wav_file_path):
-    # Check if the MP3 file exists
+    # Check if the WAV file exists
     if not os.path.isfile(wav_file_path):
         module_logger.error(f"WAV file does not exist: {wav_file_path}")
         return False

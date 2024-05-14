@@ -1,4 +1,4 @@
-icad-tone-detection~=0.8
+icad-tone-detection~=0.9
 paho-mqtt~=2.0.0
 colorama~=0.4.6
 google-cloud-storage~=2.15.0
