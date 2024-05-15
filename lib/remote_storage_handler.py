@@ -49,7 +49,7 @@ class GoogleCloudStorage:
     def upload_file(self, source_file_path, destination_file_path, destination_generated_path, max_attempts=3):
         try:
             if not os.path.exists(source_file_path) or not os.path.isfile(source_file_path):
-                logging.error(f'Source file {source_file_path} does not exist or is not a file.')
+                module_logger.error(f'Source file {source_file_path} does not exist or is not a file.')
                 return False
 
             mime_type, _ = mimetypes.guess_type(source_file_path)
@@ -120,7 +120,7 @@ class AWSS3Storage:
     def upload_file(self, source_file_path, destination_file_path, destination_generated_path, max_attempts=3):\
 
         if not os.path.exists(source_file_path) or not os.path.isfile(source_file_path):
-            logging.error(f'Source file {source_file_path} does not exist or is not a file.')
+            module_logger.error(f'Source file {source_file_path} does not exist or is not a file.')
             return None
 
         try:
@@ -332,7 +332,7 @@ class LocalStorage:
     def upload_file(self, source_file_path, destination_file_path, destination_generated_path, max_attempts=None):
         """Copies a file to the local storage with a date-based directory structure."""
         if not os.path.exists(source_file_path) or not os.path.isfile(source_file_path):
-            logging.error(f'Source file {source_file_path} does not exist or is not a file.')
+            module_logger.error(f'Source file {source_file_path} does not exist or is not a file.')
             return False
 
         try:
@@ -350,7 +350,7 @@ class LocalStorage:
             return urljoin(url_with_date, encoded_file_name)
 
         except Exception as error:  # Preferably catch more specific exceptions
-            logging.warning(f'Local Archive Failed: {error}')
+            module_logger.warning(f'Local Archive Failed: {error}')
             return False
 
     def clean_files(self, archive_path, archive_days):
@@ -363,7 +363,7 @@ class LocalStorage:
                 file_path = os.path.join(root, name)
                 if current_time - os.path.getmtime(file_path) >= archive_seconds:
                     os.remove(file_path)
-                    logging.debug(f"Successfully cleaned local file: {file_path}")
+                    module_logger.debug(f"Successfully cleaned local file: {file_path}")
 
             for name in dirs:
                 dir_path = os.path.join(root, name)

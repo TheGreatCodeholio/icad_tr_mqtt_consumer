@@ -53,17 +53,26 @@ def archive_files(archive_config, source_path, call_data):
 
     for extension in archive_config.get('archive_extensions', []):
         if extension == ".wav":
-            upload_response = archive_class.upload_file(source_wav_path, destination_wav_path, generated_folder_path)
-            if upload_response:
-                wav_url_path = upload_response
+            if os.path.isfile(source_wav_path):
+                upload_response = archive_class.upload_file(source_wav_path, destination_wav_path, generated_folder_path)
+                if upload_response:
+                    wav_url_path = upload_response
+            else:
+                module_logger.warning("Skipping archive for WAV file. File does not exist.")
         elif extension == ".m4a":
-            upload_response = archive_class.upload_file(source_m4a_path, destination_m4a_path, generated_folder_path)
-            if upload_response:
-                m4a_url_path = upload_response
+            if os.path.isfile(source_m4a_path):
+                upload_response = archive_class.upload_file(source_m4a_path, destination_m4a_path, generated_folder_path)
+                if upload_response:
+                    m4a_url_path = upload_response
+            else:
+                module_logger.warning("Skipping archive for M4A file. File does not exist.")
         elif extension == ".json":
-            upload_response = archive_class.upload_file(source_json_path, destination_json_path, generated_folder_path)
-            if upload_response:
-                json_url_path = upload_response
+            if os.path.isfile(source_json_path):
+                upload_response = archive_class.upload_file(source_json_path, destination_json_path, generated_folder_path)
+                if upload_response:
+                    json_url_path = upload_response
+            else:
+                module_logger.warning("Skipping archive for JSON file. File does not exist.")
         else:
             module_logger.warning("Unknown Archive Extension")
 
