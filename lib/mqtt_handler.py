@@ -1,6 +1,9 @@
 import base64
 import json
+import queue
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import paho.mqtt.client as mqtt
 import logging
@@ -11,7 +14,7 @@ module_logger = logging.getLogger('icad_tr_consumer.mqtt_client')
 
 
 class MQTTClient:
-    def __init__(self, global_config_data):
+    def __init__(self, global_config_data, num_workers=8):
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.global_config_data = global_config_data
         self.broker_address = global_config_data.get("mqtt", {}).get("hostname", "")
@@ -22,6 +25,9 @@ class MQTTClient:
         self.ca_certs = global_config_data.get("mqtt", {}).get("ca_certs", "")
         self.certfile = global_config_data.get("mqtt", {}).get("certfile", "")
         self.keyfile = global_config_data.get("mqtt", {}).get("keyfile", "")
+
+        self.message_queue = queue.Queue()
+        self.executor = ThreadPoolExecutor(max_workers=num_workers)
 
         # Set the callbacks
         self.client.on_connect = self.on_connect
@@ -52,10 +58,20 @@ class MQTTClient:
     def on_disconnect(self, client, userdata, flags, reason_code, properties):
         module_logger.info(f"MQTT - Disconnected from Broker: {reason_code}")
 
-    # error processing
-
     def on_message(self, client, userdata, msg):
-        module_logger.debug(f"Received Message")
+        module_logger.debug("Received Message, queuing for processing.")
+        self.message_queue.put(msg)
+
+    def process_messages(self):
+        while True:
+            msg = self.message_queue.get()
+            try:
+                self.executor.submit(self.process_message, msg)
+            finally:
+                self.message_queue.task_done()
+
+    def process_message(self, msg):
+        module_logger.debug("Processing message from queue.")
         start_time = time.time()
 
         # Load call data and audio from MQTT
@@ -78,6 +94,7 @@ class MQTTClient:
         process_time = time.time() - start_time
         module_logger.info(f"Message Processing Complete")
         module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
+        self.message_queue.task_done()
 
     def start_mqtt_connection(self):
         module_logger.info("Connect")
@@ -101,6 +118,8 @@ class MQTTClient:
         except Exception as e:
             module_logger.error(f"An unexpected error occurred while connecting to MQTT: {e}")
         try:
+            # Start processing messages
+            self.executor.submit(self.process_messages)
             # Start the loop to process received messages
             self.client.loop_start()
         except Exception as e:
@@ -110,3 +129,4 @@ class MQTTClient:
     def disconnect(self):
         self.client.loop_stop()
         self.client.disconnect()
+        self.executor.shutdown(wait=True)

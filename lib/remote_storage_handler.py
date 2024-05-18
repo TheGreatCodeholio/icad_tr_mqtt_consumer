@@ -7,12 +7,13 @@ import time
 import traceback
 from stat import S_ISDIR
 from contextlib import contextmanager
+
 from google.cloud import storage
 from google.cloud.exceptions import GoogleCloudError
 from urllib.parse import urljoin, quote
 
 import boto3
-from botocore.exceptions import ClientError, NoCredentialsError, ParamValidationError
+from botocore.exceptions import ClientError, NoCredentialsError, ParamValidationError, PartialCredentialsError
 
 from paramiko import SSHClient, AutoAddPolicy, RSAKey, SSHException
 
@@ -37,6 +38,7 @@ class GoogleCloudStorage:
 
     def __init__(self, storage_config):
         try:
+
             self.storage_client = storage.Client.from_service_account_json(
                 storage_config['credentials_file'], project=storage_config['project_id'])
             self.bucket_name = storage_config['bucket_name']
@@ -60,7 +62,7 @@ class GoogleCloudStorage:
                 blob = self.bucket.blob(destination_file_path)
 
                 with open(source_file_path, 'rb') as file:
-                    blob.upload_from_file(file, content_type=mime_type)
+                    blob.upload_from_file(file, content_type=mime_type, timezone=10, retry=2)
 
                 blob.make_public()
 
@@ -98,16 +100,20 @@ class AWSS3Storage:
     def __init__(self, storage_config):
         try:
 
-            if not storage_config.get("access_key_id", "") or not storage_config.get("secret_access_key",
-                                                                                     "") or not storage_config.get(
-                'bucket_name', ""):
+            if not storage_config.get("access_key_id", "") or not storage_config.get("secret_access_key", "") or not storage_config.get('bucket_name', ""):
                 module_logger.error(f"AWS S3 Missing required configuration data.")
                 return
 
             self.s3 = boto3.resource(
                 's3',
                 aws_access_key_id=storage_config.get("access_key_id", ""),
-                aws_secret_access_key=storage_config.get("secret_access_key", "")
+                aws_secret_access_key=storage_config.get("secret_access_key", ""),
+                connect_timeout=10,
+                read_timeout=15,
+                retries={
+                    'max_attempts': 3,
+                    'mode': 'standard'
+                }
             )
             self.bucket_name = storage_config.get('bucket_name', "")
             self.bucket = self.s3.Bucket(self.bucket_name)
@@ -116,6 +122,12 @@ class AWSS3Storage:
             module_logger.error(f"AWS S3 Missing required configuration data: {e}")
         except NoCredentialsError as e:
             module_logger.error(f"Credentials not available for AWS S3: {e}")
+        except PartialCredentialsError as e:
+            module_logger.error(f"Incomplete credentials provided: {e}")
+        except ClientError as e:
+            module_logger.error(f"Failed to establish session with AWS S3: {e}")
+        except Exception as e:
+            module_logger.error(f"An unexpected error occurred: {e}")
 
     def upload_file(self, source_file_path, destination_file_path, destination_generated_path, max_attempts=3):\
 
@@ -270,7 +282,7 @@ class SCPStorage:
             return None
 
     @contextmanager
-    def _create_sftp_session(self):
+    def _create_sftp_session(self, timeout=15):
         """Creates and manages an SFTP session using context management.
 
         :return: Yields a tuple of SSH client and SFTP session.
@@ -288,7 +300,8 @@ class SCPStorage:
                 "username": self.username,
                 "port": self.port,
                 "look_for_keys": False,
-                "allow_agent": False
+                "allow_agent": False,
+                "timeout": timeout
             }
 
             # Use the private key for authentication if specified
