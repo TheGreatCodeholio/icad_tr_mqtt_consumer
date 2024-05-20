@@ -103,6 +103,12 @@ default_config = {
                     "rdio_api_key": "example-api-key"
                 }
             ],
+            "icad_alerting": {
+              "enabled": 0,
+              "allowed_talkgroups": ["*"],
+              "api_url": "https://alert.example.com/process_alert",
+              "api_key": ""
+            },
             "talkgroup_config": {
                 "*": {
                     "whisper": {

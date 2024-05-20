@@ -5,6 +5,7 @@ from lib.archive_handler import archive_files
 from lib.audio_file_handler import save_temporary_files, compress_wav, save_temporary_json_file, clean_temp_files
 from lib.broadcastify_calls_handler import upload_to_broadcastify_calls
 from lib.config_handler import get_talkgroup_config
+from lib.icad_alerting_handler import upload_to_icad_alert
 from lib.icad_player_handler import upload_to_icad_player
 from lib.icad_tone_detect_legacy_handler import upload_to_icad_legacy
 from lib.openmhz_handler import upload_to_openmhz
@@ -100,7 +101,7 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
     except Exception as e:
         module_logger.warning(f"Enable to save new call data to temporary file. {e}")
 
-    # Archive Files
+    # Archive Audio Files
     if system_config.get("archive", {}).get("enabled", 0) == 1 and system_config.get("archive", {}).get("archive_days",
                                                                                                         0) >= 1:
         wav_url, m4a_url, json_url = archive_files(system_config.get("archive", {}),
@@ -162,6 +163,19 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
         else:
             module_logger.warning(f"RDIO system is disabled: {rdio.get('rdio_url')}")
             continue
+
+    # Upload to Alerting
+
+    # Upload to iCAD Player
+    if system_config.get("icad_alerting", {}).get("enabled", 0) == 1:
+        if talkgroup_decimal not in system_config.get("icad_alerting", {}).get("allowed_talkgroups",
+                                                                             []) and "*" not in system_config.get(
+            "icad_alerting", {}).get("allowed_talkgroups", []):
+            module_logger.warning(
+                f"iCAD Alerting Disabled for Talkgroup {call_data.get('talkgroup_tag') or call_data.get('talkgroup_decimal')}")
+        else:
+            upload_to_icad_alert(system_config.get("icad_alerting", {}), call_data)
+            module_logger.info(f"Upload to iCAD Alert Complete")
 
     # Cleanup Temp Files
     clean_temp_files(global_config_data.get("temp_file_path", "/dev/shm"), call_data)
