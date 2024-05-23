@@ -39,11 +39,14 @@ except Exception as e:
 def main():
     logger.debug("Running Main")
 
-    mqtt_client = MQTTClient(config_data).start_mqtt_connection()
+    mqtt_client = MQTTClient(config_data)
+    mqtt_client.start_mqtt_connection()
 
     try:
         while True:
-            time.sleep(1)  # Sleep to allow signal handling or simple background processing
+            time.sleep(1)
+            if not mqtt_client.connected:
+                break
     except KeyboardInterrupt as e:
         logger.info(f"Shutting Down MQTT Consumer: {e}")
     except Exception as e:

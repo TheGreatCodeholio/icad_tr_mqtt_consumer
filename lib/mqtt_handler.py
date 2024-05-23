@@ -34,11 +34,13 @@ class MQTTClient:
         self.client.on_message = self.on_message
         self.client.on_subscribe = self.on_subscribe
         self.client.on_disconnect = self.on_disconnect
+        self.connected = False
 
     def on_connect(self, client, userdata, flags, reason_code, properties):
         if flags.session_present:
             if reason_code == 0:
                 module_logger.info(f"MQTT - Connected to MQTT Broker Successfully")
+                self.connected = True
             if reason_code > 0:
                 module_logger.error(f"MQTT - Error Connection to Broker {reason_code}")
                 return
@@ -57,6 +59,8 @@ class MQTTClient:
 
     def on_disconnect(self, client, userdata, flags, reason_code, properties):
         module_logger.info(f"MQTT - Disconnected from Broker: {reason_code}")
+        self.disconnect()
+        self.connected = False
 
     def on_message(self, client, userdata, msg):
         module_logger.debug("Received Message, queuing for processing.")
