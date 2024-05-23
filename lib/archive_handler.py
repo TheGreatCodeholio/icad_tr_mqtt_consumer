@@ -7,7 +7,7 @@ from lib.remote_storage_handler import get_archive_class
 module_logger = logging.getLogger('icad_tr_consumer.archive')
 
 
-def archive_audio_files(archive_config, source_path, call_data):
+def archive_files(archive_config, source_path, call_data):
     wav_url_path = None
     m4a_url_path = None
     json_url_path = None
