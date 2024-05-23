@@ -46,8 +46,6 @@ def main():
     try:
         while True:
             time.sleep(1)
-            if not mqtt_client.connected:
-                break
     except MQTTConnectionError as e:
         logger.error(f"MQTT Connection Error: {e}")
     except KeyboardInterrupt as e:
