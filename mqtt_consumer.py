@@ -41,6 +41,7 @@ def main():
 
     mqtt_client = MQTTClient(config_data)
     mqtt_client.start_mqtt_connection()
+    time.sleep(5)
 
     try:
         while True:
@@ -54,6 +55,7 @@ def main():
         logger.info(f"Unknown Exception occurred while running consumer. {e}")
     finally:
         if mqtt_client:
+            logger.info("Shutting Down MQTT Consumer main loop")
             mqtt_client.disconnect()
 
 
