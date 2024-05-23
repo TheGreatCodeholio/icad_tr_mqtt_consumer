@@ -4,7 +4,7 @@ import traceback
 
 from lib.config_handler import load_config_file
 from lib.logging_handler import CustomLogger
-from lib.mqtt_handler import MQTTClient
+from lib.mqtt_handler import MQTTClient, MQTTConnectionError
 
 app_name = "icad_tr_consumer"
 __version__ = "1.0"
@@ -48,6 +48,8 @@ def main():
             time.sleep(1)
             if not mqtt_client.connected:
                 break
+    except MQTTConnectionError as e:
+        logger.error(f"MQTT Connection Error: {e}")
     except KeyboardInterrupt as e:
         logger.info(f"Shutting Down MQTT Consumer: {e}")
     except Exception as e:

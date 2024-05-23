@@ -3,7 +3,6 @@
 import base64
 import json
 import queue
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -13,6 +12,11 @@ import logging
 from lib.call_processor import process_mqtt_call
 
 module_logger = logging.getLogger('icad_tr_consumer.mqtt_client')
+
+
+class MQTTConnectionError(Exception):
+    """Custom exception class for MQTT connection errors."""
+    pass
 
 
 class MQTTClient:
@@ -36,16 +40,14 @@ class MQTTClient:
         self.client.on_message = self.on_message
         self.client.on_subscribe = self.on_subscribe
         self.client.on_disconnect = self.on_disconnect
-        self.connected = False
 
     def on_connect(self, client, userdata, flags, reason_code, properties):
         if flags.session_present:
             if reason_code == 0:
                 module_logger.info(f"MQTT - Connected to MQTT Broker Successfully")
-                self.connected = True
             if reason_code > 0:
                 module_logger.error(f"MQTT - Error Connection to Broker {reason_code}")
-                return
+                raise MQTTConnectionError(f"Connection failed with reason code: {reason_code}")
 
         client.subscribe(self.topic)
 
@@ -61,8 +63,7 @@ class MQTTClient:
 
     def on_disconnect(self, client, userdata, flags, reason_code, properties):
         module_logger.info(f"MQTT - Disconnected from Broker: {reason_code}")
-        self.disconnect()
-        self.connected = False
+        raise MQTTConnectionError(f"Disconnected from MQTT broker with reason code: {reason_code}")
 
     def on_message(self, client, userdata, msg):
         module_logger.debug("Received Message, queuing for processing.")
