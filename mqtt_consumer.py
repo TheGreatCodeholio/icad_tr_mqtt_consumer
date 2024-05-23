@@ -41,7 +41,6 @@ def main():
 
     mqtt_client = MQTTClient(config_data)
     mqtt_client.start_mqtt_connection()
-    time.sleep(5)
 
     try:
         while True:
