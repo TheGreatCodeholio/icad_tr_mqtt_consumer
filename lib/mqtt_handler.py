@@ -28,6 +28,8 @@ class MQTTClient:
         self.certfile = global_config_data.get("mqtt", {}).get("certfile", "")
         self.keyfile = global_config_data.get("mqtt", {}).get("keyfile", "")
 
+        self.error_flag = threading.Event()
+
         self.message_queue = queue.Queue()
         self.executor = ThreadPoolExecutor(max_workers=num_workers)
 
@@ -37,7 +39,7 @@ class MQTTClient:
         self.client.on_subscribe = self.on_subscribe
         self.client.on_disconnect = self.on_disconnect
 
-        self.error_flag = threading.Event()
+
 
     def on_connect(self, client, userdata, flags, reason_code, properties):
         if flags.session_present:
@@ -70,6 +72,7 @@ class MQTTClient:
 
     def process_messages(self):
         while not self.error_flag.is_set():  # Check if there's an error flag set to stop processing
+            module_logger.debug(f"MQTT - Waiting for {self.message_queue.qsize()} messages")
             try:
                 msg = self.message_queue.get(timeout=1)  # Use a timeout to allow periodic checks
                 self.executor.submit(self.process_message, msg)
@@ -78,7 +81,7 @@ class MQTTClient:
             finally:
                 self.message_queue.task_done()
 
-        module_logger.debug(f"MQTT - Exiting  Queue Process Loop: {self.message_queue.qsize()}")
+        module_logger.debug(f"MQTT - Exiting Queue Process Loop: {self.message_queue.qsize()}")
 
     def process_message(self, msg):
         try:
