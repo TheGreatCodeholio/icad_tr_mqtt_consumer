@@ -5,7 +5,8 @@ etc/config.json
 etc/google_cloud.json
 etc/id_rsa
 etc/id_rsa.pub
-
+Dockerfile
+docker-compose.yaml
 .env
 .venv
 env/

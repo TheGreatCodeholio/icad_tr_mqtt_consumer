@@ -54,7 +54,6 @@ def main():
         if mqtt_client:
             logger.info("Shutting Down MQTT Consumer main loop")
             mqtt_client.disconnect()
-            sys.exit(1)
 
 
 if __name__ == '__main__':

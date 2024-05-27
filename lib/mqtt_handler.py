@@ -78,6 +78,8 @@ class MQTTClient:
             finally:
                 self.message_queue.task_done()
 
+        module_logger.debug(f"MQTT - Exiting  Queue Process Loop: {self.message_queue.qsize()}")
+
     def process_message(self, msg):
         try:
             module_logger.debug("Processing message from queue.")
@@ -132,6 +134,7 @@ class MQTTClient:
         except Exception as e:
             module_logger.error(f"An unexpected error occurred while connecting to MQTT: {e}")
             self.error_flag.set()
+            self.disconnect()
 
         try:
             # Start processing messages
@@ -141,6 +144,7 @@ class MQTTClient:
         except Exception as e:
             module_logger.error(f"An unexpected error occurred while running consumer. Exiting")
             self.error_flag.set()
+            self.disconnect()
 
     def disconnect(self):
         module_logger.info("Disconnecting from MQTT Broker and shutting down all threads.")
