@@ -62,44 +62,53 @@ class MQTTClient:
     def on_disconnect(self, client, userdata, flags, reason_code, properties):
         module_logger.info(f"MQTT - Disconnected from Broker: {reason_code}")
         self.error_flag.set()
+        self.disconnect()
 
     def on_message(self, client, userdata, msg):
         module_logger.debug("Received Message, queuing for processing.")
         self.message_queue.put(msg)
 
     def process_messages(self):
-        while True:
-            msg = self.message_queue.get()
+        while not self.error_flag.is_set():  # Check if there's an error flag set to stop processing
             try:
+                msg = self.message_queue.get(timeout=1)  # Use a timeout to allow periodic checks
                 self.executor.submit(self.process_message, msg)
+            except queue.Empty:
+                continue  # Continue waiting for messages unless the error flag is set
             finally:
                 self.message_queue.task_done()
 
     def process_message(self, msg):
-        module_logger.debug("Processing message from queue.")
-        start_time = time.time()
+        try:
+            module_logger.debug("Processing message from queue.")
+            start_time = time.time()
 
-        # Load call data and audio from MQTT
-        data = json.loads(msg.payload)
-        call_data = data.get("call", {})
-        wav_data = base64.b64decode(call_data.get("audio_wav_base64", ""))
-        metadata = call_data.get("metadata", {})
+            # Load call data and audio from MQTT
+            data = json.loads(msg.payload)
+            call_data = data.get("call", {})
+            wav_data = base64.b64decode(call_data.get("audio_wav_base64", ""))
+            metadata = call_data.get("metadata", {})
 
-        wav_size = len(wav_data)
-        wav_size_kb = wav_size / 1024
+            wav_size = len(wav_data)
+            wav_size_kb = wav_size / 1024
 
-        module_logger.info(f"MQTT - New Message received from {msg.topic}")
-        module_logger.debug(f"Payload size: {len(msg.payload)} bytes")
-        module_logger.debug(f"Decoded WAV data size: {wav_size} bytes ({wav_size_kb:.2f} KB)")
-        module_logger.debug(f"Message Metadata: {metadata}")
+            module_logger.info(f"MQTT - New Message received from {msg.topic}")
+            module_logger.debug(f"Payload size: {len(msg.payload)} bytes")
+            module_logger.debug(f"Decoded WAV data size: {wav_size} bytes ({wav_size_kb:.2f} KB)")
+            module_logger.debug(f"Message Metadata: {metadata}")
 
-        # Process the call data
-        process_mqtt_call(self.global_config_data, wav_data, metadata)
+            # Process the call data
+            process_mqtt_call(self.global_config_data, wav_data, metadata)
 
-        process_time = time.time() - start_time
-        module_logger.info(f"Message Processing Complete")
-        module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
-        self.message_queue.task_done()
+            process_time = time.time() - start_time
+            module_logger.info(f"Message Processing Complete")
+            module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
+            self.message_queue.task_done()
+        except Exception as e:
+            module_logger.error(f"Error processing message: {e}")
+
+        finally:
+            module_logger.info("Finished processing a message.")
 
     def start_mqtt_connection(self):
         module_logger.info("Connect")
@@ -134,6 +143,8 @@ class MQTTClient:
             self.error_flag.set()
 
     def disconnect(self):
-        self.client.loop_stop()
-        self.client.disconnect()
-        self.executor.shutdown(wait=True)
+        module_logger.info("Disconnecting from MQTT Broker and shutting down all threads.")
+        self.client.loop_stop()  # Stop the network loop
+        self.client.disconnect()  # Disconnect the MQTT client
+        self.executor.shutdown(wait=True)  # Shutdown the executor, waiting for tasks to complete
+
