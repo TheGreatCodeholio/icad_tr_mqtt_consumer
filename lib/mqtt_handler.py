@@ -72,9 +72,9 @@ class MQTTClient:
 
     def process_messages(self):
         while not self.error_flag.is_set():  # Check if there's an error flag set to stop processing
-            module_logger.debug(f"MQTT - Waiting for {self.message_queue.qsize()} messages")
+            module_logger.debug(f"MQTT - Process loop looking for messages")
             try:
-                msg = self.message_queue.get(timeout=1)  # Use a timeout to allow periodic checks
+                msg = self.message_queue.get()  # Use a timeout to allow periodic checks
                 self.executor.submit(self.process_message, msg)
             finally:
                 self.message_queue.task_done()
