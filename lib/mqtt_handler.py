@@ -74,9 +74,15 @@ class MQTTClient:
         while not self.error_flag.is_set():  # Check if there's an error flag set to stop processing
             module_logger.debug(f"MQTT - Waiting for {self.message_queue.qsize()} messages")
             try:
-                msg = self.message_queue.get(timeout=1)  # Use a timeout to allow periodic checks
-                self.executor.submit(self.process_message, msg)
-            finally:
+                msg = self.message_queue.get(timeout=1)  # Wait for a message with a timeout
+                if msg is not None:
+                    # Process the message using a thread pool and handle it completely before marking as done
+                    future = self.executor.submit(self.process_message, msg)
+                    future.add_done_callback(lambda f: self.message_queue.task_done())
+            except queue.Empty:
+                continue  # Continue if no message is available within the timeout period
+            except Exception as e:
+                module_logger.error(f"Error in processing messages: {e}")
                 self.message_queue.task_done()
 
         module_logger.debug(f"MQTT - Exiting Queue Process Loop: {self.message_queue.qsize()}")
