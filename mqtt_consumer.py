@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import traceback
 
@@ -57,3 +58,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    sys.exit(1)
