@@ -3,6 +3,7 @@
 import base64
 import json
 import queue
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -12,11 +13,6 @@ import logging
 from lib.call_processor import process_mqtt_call
 
 module_logger = logging.getLogger('icad_tr_consumer.mqtt_client')
-
-
-class MQTTConnectionError(Exception):
-    """Custom exception class for MQTT connection errors."""
-    pass
 
 
 class MQTTClient:
@@ -41,13 +37,15 @@ class MQTTClient:
         self.client.on_subscribe = self.on_subscribe
         self.client.on_disconnect = self.on_disconnect
 
+        self.error_flag = threading.Event()
+
     def on_connect(self, client, userdata, flags, reason_code, properties):
         if flags.session_present:
             if reason_code == 0:
                 module_logger.info(f"MQTT - Connected to MQTT Broker Successfully")
             if reason_code > 0:
                 module_logger.error(f"MQTT - Error Connection to Broker {reason_code}")
-                raise MQTTConnectionError(f"Connection failed with reason code: {reason_code}")
+                self.error_flag.set()
 
         client.subscribe(self.topic)
 
@@ -63,7 +61,7 @@ class MQTTClient:
 
     def on_disconnect(self, client, userdata, flags, reason_code, properties):
         module_logger.info(f"MQTT - Disconnected from Broker: {reason_code}")
-        raise MQTTConnectionError(f"Disconnected from MQTT broker with reason code: {reason_code}")
+        self.error_flag.set()
 
     def on_message(self, client, userdata, msg):
         module_logger.debug("Received Message, queuing for processing.")
@@ -124,6 +122,8 @@ class MQTTClient:
 
         except Exception as e:
             module_logger.error(f"An unexpected error occurred while connecting to MQTT: {e}")
+            self.error_flag.set()
+
         try:
             # Start processing messages
             self.executor.submit(self.process_messages)
@@ -131,7 +131,7 @@ class MQTTClient:
             self.client.loop_start()
         except Exception as e:
             module_logger.error(f"An unexpected error occurred while running consumer. Exiting")
-            exit(0)
+            self.error_flag.set()
 
     def disconnect(self):
         self.client.loop_stop()
