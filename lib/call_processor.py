@@ -53,7 +53,8 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
     for icad_detect in system_config.get("icad_tone_detect_legacy", []):
         if icad_detect.get("enabled", 0) == 1:
             try:
-                icad_result = upload_to_icad_legacy(icad_detect, global_config_data.get("temp_file_path", "/dev/shm"), call_data)
+                icad_result = upload_to_icad_legacy(icad_detect, global_config_data.get("temp_file_path", "/dev/shm"),
+                                                    call_data)
                 if icad_result:
                     module_logger.info(f"Successfully uploaded to iCAD Detect server: {icad_detect.get('icad_url')}")
                 else:
@@ -61,8 +62,9 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
 
 
             except Exception as e:
-                module_logger.error(f"Failed to upload to iCAD Detect server: {icad_detect.get('icad_url')}. Error: {str(e)}",
-                             exc_info=True)
+                module_logger.error(
+                    f"Failed to upload to iCAD Detect server: {icad_detect.get('icad_url')}. Error: {str(e)}",
+                    exc_info=True)
                 continue
         else:
             module_logger.warning(f"iCAD Detect is disabled: {icad_detect.get('icad_url')}")
@@ -165,11 +167,9 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
             continue
 
     # Upload to Alerting
-
-    # Upload to iCAD Player
     if system_config.get("icad_alerting", {}).get("enabled", 0) == 1:
         if talkgroup_decimal not in system_config.get("icad_alerting", {}).get("allowed_talkgroups",
-                                                                             []) and "*" not in system_config.get(
+                                                                               []) and "*" not in system_config.get(
             "icad_alerting", {}).get("allowed_talkgroups", []):
             module_logger.warning(
                 f"iCAD Alerting Disabled for Talkgroup {call_data.get('talkgroup_tag') or call_data.get('talkgroup_decimal')}")

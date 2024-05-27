@@ -50,8 +50,7 @@ def main():
     except KeyboardInterrupt as e:
         logger.info(f"Shutting Down MQTT Consumer: {e}")
     except Exception as e:
-        traceback.print_exc()
-        logger.info(f"Unknown Exception occurred while running consumer. {e}")
+        logger.error(f"Unknown Exception occurred while running consumer. {e}")
     finally:
         if mqtt_client:
             logger.info("Shutting Down MQTT Consumer main loop")
