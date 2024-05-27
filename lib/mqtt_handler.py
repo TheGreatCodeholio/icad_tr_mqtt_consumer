@@ -76,8 +76,6 @@ class MQTTClient:
             try:
                 msg = self.message_queue.get(timeout=1)  # Use a timeout to allow periodic checks
                 self.executor.submit(self.process_message, msg)
-            except queue.Empty:
-                continue  # Continue waiting for messages unless the error flag is set
             finally:
                 self.message_queue.task_done()
 
