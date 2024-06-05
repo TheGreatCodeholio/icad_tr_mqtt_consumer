@@ -18,6 +18,15 @@ def generate_mapped_json(template, data):
             data['timestamp'] = current_time
             data['timestamp_epoch'] = data['start_time']
 
+        # Function to get value from nested dictionary using dot notation
+        def get_value_from_dict(d, key):
+            keys = key.split('.')
+            for k in keys:
+                d = d.get(k, '')
+                if d == '':
+                    break
+            return d
+
         # Recursive function to replace placeholders in the JSON object
         def replace_placeholders(obj, mapping):
             if isinstance(obj, dict):
@@ -25,7 +34,15 @@ def generate_mapped_json(template, data):
             elif isinstance(obj, list):
                 return [replace_placeholders(i, mapping) for i in obj]
             elif isinstance(obj, str):
-                return obj.format_map(mapping)
+                while True:
+                    start_idx = obj.find('{')
+                    end_idx = obj.find('}', start_idx)
+                    if start_idx == -1 or end_idx == -1:
+                        break
+                    placeholder = obj[start_idx + 1:end_idx]
+                    value = get_value_from_dict(mapping, placeholder)
+                    obj = obj[:start_idx] + str(value) + obj[end_idx + 1:]
+                return obj
             else:
                 return obj
 
