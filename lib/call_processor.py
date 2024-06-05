@@ -12,6 +12,7 @@ from lib.openmhz_handler import upload_to_openmhz
 from lib.rdio_handler import upload_to_rdio
 from lib.tone_detect_handler import get_tones
 from lib.transcibe_handler import upload_to_transcribe
+from lib.webhook_handler import WebHook
 
 module_logger = logging.getLogger('icad_tr_consumer.call_processing')
 
@@ -176,6 +177,19 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
         else:
             upload_to_icad_alert(system_config.get("icad_alerting", {}), call_data)
             module_logger.info(f"Upload to iCAD Alert Complete")
+
+    # Send To Webhooks
+    for webhook in system_config.get("webhooks", []):
+        if webhook.get("enabled", 0) == 1:
+            module_logger.info(f"Processing Webhook {webhook.get('webhook_url')}")
+            if talkgroup_decimal not in webhook.get("allowed_talkgroups", []) and "*" not in webhook.get("allowed_talkgroups", []):
+                module_logger.warning(
+                    f"Webhook Disabled for Talkgroup {call_data.get('talkgroup_tag') or call_data.get('talkgroup_decimal')}")
+            else:
+                wh = WebHook(webhook, call_data)
+                wh.send_webhook()
+        else:
+            module_logger.debug(f"Webhook is disabled: {webhook.get('webhook_url')}")
 
     # Cleanup Temp Files
     clean_temp_files(global_config_data.get("temp_file_path", "/dev/shm"), call_data)

@@ -104,11 +104,22 @@ default_config = {
                 }
             ],
             "icad_alerting": {
-              "enabled": 0,
-              "allowed_talkgroups": ["*"],
-              "api_url": "https://alert.example.com/process_alert",
-              "api_key": ""
+                "enabled": 0,
+                "allowed_talkgroups": ["*"],
+                "api_url": "https://alert.example.com/process_alert",
+                "api_key": ""
             },
+            "webhooks": [
+                {
+                    "enabled": 0,
+                    "webhook_url": "https://example.com",
+                    "webhook_header": {"Authorization": "1234-1234"},
+                    "webhook_body": {
+                        "content": "\n{system_short_name} {talkgroup_alpha_tag} - {timestamp}\n\n{transcript}\n\n{audio_m4a_url}"
+                    },
+                    "allowed_talkgroups": ["*"]
+                }
+            ],
             "talkgroup_config": {
                 "*": {
                     "whisper": {

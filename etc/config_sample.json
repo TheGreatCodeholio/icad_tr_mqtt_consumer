@@ -109,6 +109,17 @@
           "rdio_api_key": "example-api-key"
         }
       ],
+      "webhooks": [
+        {
+          "enabled": 0,
+          "webhook_url": "https://example.com",
+          "webhook_header": {"Authorization": "1234-1234"},
+          "webhook_body": {
+            "content": "\n{system_short_name} {talkgroup_alpha_tag} - {timestamp}\n\n{transcript}\n\n{audio_mp3_url}"
+          },
+          "allowed_talkgroups": []
+        }
+      ],
       "talkgroup_config": {
         "*": {
           "whisper": {
