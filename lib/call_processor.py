@@ -105,8 +105,7 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
         module_logger.warning(f"Enable to save new call data to temporary file. {e}")
 
     # Archive Audio Files
-    if system_config.get("archive", {}).get("enabled", 0) == 1 and system_config.get("archive", {}).get("archive_days",
-                                                                                                        0) >= 1:
+    if system_config.get("archive", {}).get("enabled", 0) == 1:
         wav_url, m4a_url, json_url = archive_files(system_config.get("archive", {}),
                                                    global_config_data.get("temp_file_path", "/dev/shm"), call_data)
         if wav_url:
