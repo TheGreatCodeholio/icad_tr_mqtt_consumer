@@ -117,7 +117,7 @@
           "webhook_body": {
             "content": "\n{system_short_name} {talkgroup_alpha_tag} - {timestamp}\n\n{transcript}\n\n{audio_mp3_url}"
           },
-          "allowed_talkgroups": []
+          "allowed_talkgroups": ["*"]
         }
       ],
       "talkgroup_config": {
