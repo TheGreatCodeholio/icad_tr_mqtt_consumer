@@ -72,7 +72,7 @@ class MQTTClient:
 
     def process_messages(self):
         while not self.error_flag.is_set():  # Check if there's an error flag set to stop processing
-            module_logger.debug(f"MQTT - Waiting for {self.message_queue.qsize()} messages")
+            #module_logger.debug(f"MQTT - Waiting for {self.message_queue.qsize()} messages")
             try:
                 msg = self.message_queue.get(timeout=1)  # Wait for a message with a timeout
                 if msg is not None:
