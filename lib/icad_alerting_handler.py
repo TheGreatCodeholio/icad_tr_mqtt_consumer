@@ -15,7 +15,7 @@ def upload_to_icad_alert(alert_config, call_data):
     }
 
     try:
-        response = requests.post(url, headers=api_headers, json=call_data)
+        response = requests.post(url, headers=api_headers, json=call_data, verify=alert_config.get('verify_ssl', False))
 
         response.raise_for_status()
         module_logger.info(
