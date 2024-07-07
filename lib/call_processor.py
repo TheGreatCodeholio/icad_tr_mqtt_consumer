@@ -30,13 +30,15 @@ def is_duplicate(message1, message2, time_tolerance=1, length_tolerance=0.3):
     length1 = float(message1.get("call_length"))
     length2 = float(message2.get("call_length"))
 
-    if abs(start_time1 - start_time2) <= time_tolerance and abs(length1 - length2) <= length_tolerance:
+    if (start_time1 - time_tolerance <= start_time2 <= start_time1 + time_tolerance) and \
+            (length1 - length_tolerance <= length2 <= length1 + length_tolerance):
         return True
     return False
 
 
 def process_mqtt_call(global_config_data, wav_data, call_data):
     m4a_exists = False
+    mp3_exists = False
     short_name = call_data.get("short_name", "")
     talkgroup_decimal = call_data.get("talkgroup", 0)
 
@@ -106,7 +108,7 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
 
     # Convert WAV to M4A in tmp /dev/shm
     if system_config.get("audio_compression", {}).get("mp3_enabled", 0) == 1:
-        m4a_exists = compress_wav_mp3(system_config.get("audio_compression", {}),
+        mp3_exists = compress_wav_mp3(system_config.get("audio_compression", {}),
                                       os.path.join(global_config_data.get("temp_file_path", "/dev/shm"),
                                                    call_data.get("filename")), call_data)
 
