@@ -30,8 +30,7 @@ def is_duplicate(message1, message2, time_tolerance=1, length_tolerance=0.3):
     length1 = message1.get("length")
     length2 = message2.get("length")
 
-    if abs((start_time1 - start_time2).total_seconds()) <= time_tolerance and abs(
-            length1 - length2) <= length_tolerance:
+    if abs(start_time1 - start_time2) <= time_tolerance and abs(length1 - length2) <= length_tolerance:
         return True
     return False
 
