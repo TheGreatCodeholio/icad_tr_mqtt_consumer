@@ -27,8 +27,8 @@ history_lock = threading.Lock()
 def is_duplicate(message1, message2, time_tolerance=1, length_tolerance=0.3):
     start_time1 = message1.get("start_time")
     start_time2 = message2.get("start_time")
-    length1 = message1.get("length")
-    length2 = message2.get("length")
+    length1 = float(message1.get("call_length"))
+    length2 = float(message2.get("call_length"))
 
     if abs(start_time1 - start_time2) <= time_tolerance and abs(length1 - length2) <= length_tolerance:
         return True
