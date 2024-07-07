@@ -1,0 +1,14 @@
+[Unit]
+Description=iCAD Trunk Recorder MQTT Consumer
+
+[Service]
+Type=simple
+User=adminlocal
+Group=adminlocal
+ExecStart=/usr/bin/python3 /home/adminlocal/icad_tr_mqtt_consumer/mqtt_consumer.py
+WorkingDirectory=/home/adminlocal/icad_tr_mqtt_consumer
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

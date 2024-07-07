@@ -38,6 +38,7 @@ class MQTTClient:
         self.client.on_message = self.on_message
         self.client.on_subscribe = self.on_subscribe
         self.client.on_disconnect = self.on_disconnect
+        self.last_calls = {}
 
 
 
@@ -76,6 +77,7 @@ class MQTTClient:
             try:
                 msg = self.message_queue.get(timeout=1)  # Wait for a message with a timeout
                 if msg is not None:
+                    module_logger.debug(f"Processing Message: {msg}")
                     # Process the message using a thread pool and handle it completely before marking as done
                     future = self.executor.submit(self.process_message, msg)
                     future.add_done_callback(lambda f: self.message_queue.task_done())

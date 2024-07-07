@@ -19,6 +19,12 @@ default_config = {
     },
     "systems": {
         "example-system": {
+            "duplicate_transmission_detection": {
+                "enabled": 1,
+                "start_difference_threshold": 0.2,
+                "length_threshold": 0.2,
+                "simulcast_talkgroups": []
+            },
             "archive": {
                 "enabled": 0,
                 "archive_type": "scp",
@@ -49,9 +55,14 @@ default_config = {
                 }
             },
             "audio_compression": {
-                "enabled": 0,
-                "sample_rate": 16000,
-                "bitrate": 96
+                "m4a_enabled": 0,
+                "m4a_sample_rate": 16000,
+                "m4a_bitrate": 96,
+                "m4a_normalization": True,
+                "mp3_enabled": 0,
+                "mp3_sample_rate": 16000,
+                "mp3_bitrate": 96,
+                "mp3_normalization": True
             },
             "icad_tone_detect_legacy": [
                 {

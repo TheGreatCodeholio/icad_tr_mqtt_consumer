@@ -1,8 +1,10 @@
 import logging
 import os
+import threading
 
 from lib.archive_handler import archive_files
-from lib.audio_file_handler import save_temporary_files, compress_wav, save_temporary_json_file, clean_temp_files
+from lib.audio_file_handler import save_temporary_files, compress_wav_mp3, compress_wav_m4a, save_temporary_json_file, \
+    clean_temp_files
 from lib.broadcastify_calls_handler import upload_to_broadcastify_calls
 from lib.config_handler import get_talkgroup_config
 from lib.icad_alerting_handler import upload_to_icad_alert
@@ -15,6 +17,23 @@ from lib.transcibe_handler import upload_to_transcribe
 from lib.webhook_handler import WebHook
 
 module_logger = logging.getLogger('icad_tr_consumer.call_processing')
+
+# Shared dictionary for message history
+message_history = {}
+# Lock for synchronizing access to message_history
+history_lock = threading.Lock()
+
+
+def is_duplicate(message1, message2, time_tolerance=1, length_tolerance=0.3):
+    start_time1 = message1.get("start_time")
+    start_time2 = message2.get("start_time")
+    length1 = message1.get("length")
+    length2 = message2.get("length")
+
+    if abs((start_time1 - start_time2).total_seconds()) <= time_tolerance and abs(
+            length1 - length2) <= length_tolerance:
+        return True
+    return False
 
 
 def process_mqtt_call(global_config_data, wav_data, call_data):
@@ -36,6 +55,42 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
         module_logger.warning("Talkgroup configuration not in config data. Cannot Process")
         return
 
+    if system_config.get("duplicate_transmission_detection", {}).get("enabled", 0) == 1:
+        duplicate_detected = False
+        relevant_talkgroups = system_config.get("duplicate_transmission_detection", {}).get("simulcast_talkgroups",
+                                                                                            []) if talkgroup_decimal in system_config.get(
+            "duplicate_transmission_detection", {}).get("simulcast_talkgroups", []) else [talkgroup_decimal]
+
+        for tg in relevant_talkgroups:
+            tg_history = message_history.get(short_name, {}).get(tg, [])
+            for existing_message in tg_history:
+                if is_duplicate(existing_message, call_data,
+                                system_config.get("duplicate_transmission_detection", {}).get(
+                                        "start_difference_threshold", []),
+                                system_config.get("duplicate_transmission_detection", {}).get("length_threshold", [])):
+                    module_logger.info(
+                        f"Duplicate message detected from talkgroup {tg}, Current talkgroup {talkgroup_decimal}")
+                    duplicate_detected = True
+                    break
+            if duplicate_detected:
+                break
+
+        if not duplicate_detected:
+            if short_name not in message_history:
+                message_history[short_name] = {}
+            for tg in relevant_talkgroups:
+                if tg not in message_history[short_name]:
+                    message_history[short_name][tg] = []
+                message_history[short_name][tg].append(call_data)
+
+                # Ensure only the 5 most recent messages are kept
+                if len(message_history[short_name][tg]) > 5:
+                    message_history[short_name][tg] = message_history[short_name][tg][-5:]
+
+        if duplicate_detected:
+            module_logger.warning("Duplicate message detected from talkgroup. Skipping message")
+            return
+
     call_data["tones"] = {}
     call_data["transcript"] = []
 
@@ -45,10 +100,16 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
         return
 
     # Convert WAV to M4A in tmp /dev/shm
-    if system_config.get("audio_compression", {}).get("enabled", 0) == 1:
-        m4a_exists = compress_wav(system_config.get("audio_compression", {}),
-                                  os.path.join(global_config_data.get("temp_file_path", "/dev/shm"),
-                                               call_data.get("filename")))
+    if system_config.get("audio_compression", {}).get("m4a_enabled", 0) == 1:
+        m4a_exists = compress_wav_m4a(system_config.get("audio_compression", {}),
+                                      os.path.join(global_config_data.get("temp_file_path", "/dev/shm"),
+                                                   call_data.get("filename")), call_data)
+
+    # Convert WAV to M4A in tmp /dev/shm
+    if system_config.get("audio_compression", {}).get("mp3_enabled", 0) == 1:
+        m4a_exists = compress_wav_mp3(system_config.get("audio_compression", {}),
+                                      os.path.join(global_config_data.get("temp_file_path", "/dev/shm"),
+                                                   call_data.get("filename")), call_data)
 
     # Legacy Tone Detection
     for icad_detect in system_config.get("icad_tone_detect_legacy", []):
@@ -181,7 +242,8 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
     for webhook in system_config.get("webhooks", []):
         if webhook.get("enabled", 0) == 1:
             module_logger.info(f"Processing Webhook {webhook.get('webhook_url')}")
-            if talkgroup_decimal not in webhook.get("allowed_talkgroups", []) and "*" not in webhook.get("allowed_talkgroups", []):
+            if talkgroup_decimal not in webhook.get("allowed_talkgroups", []) and "*" not in webhook.get(
+                    "allowed_talkgroups", []):
                 module_logger.warning(
                     f"Webhook Disabled for Talkgroup {call_data.get('talkgroup_tag') or call_data.get('talkgroup_decimal')}")
             else:
