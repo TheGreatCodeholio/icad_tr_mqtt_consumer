@@ -97,6 +97,7 @@ class MQTTClient:
             # Load call data and audio from MQTT
             data = json.loads(msg.payload)
             call_data = data.get("call", {})
+            call_data["talkgroup_decimal"] = call_data.get("talkgroup", 0)
             wav_data = base64.b64decode(call_data.get("audio_wav_base64", ""))
             metadata = call_data.get("metadata", {})
 
