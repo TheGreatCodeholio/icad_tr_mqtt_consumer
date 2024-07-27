@@ -202,7 +202,7 @@ class MQTTClient:
 
                 # Process the call data
                 process_mqtt_call(self.es, self.global_config_data, wav_data, metadata)
-            elif f"{topic_base}/unit" in msg.topic:
+            elif f"{topic_base}/units" in msg.topic:
                 pass
             else:
                 module_logger.warning(f"Unknown Message: {msg.topic}")
