@@ -125,8 +125,8 @@ class MQTTClient:
             instance_id = data.get("instance_id")
 
             if instance_id:
-                if instance_id == "trunk-recorder":
-                    module_logger.warning(f"Default instance id detected!")
+                # if instance_id == "trunk-recorder":
+                #     module_logger.warning(f"Default instance id detected!")
 
                 module_logger.debug(f"Instance ID {instance_id}")
             else:
@@ -134,7 +134,7 @@ class MQTTClient:
 
             topic_base = self.topic.split("#")[0]
 
-            if msg.topic == f"{topic_base}/feeds/rates":
+            if msg.topic == f"{topic_base}feeds/rates":
                 for sys in data.get("rates", {}):
                     module_logger.debug(f"System: {sys['sys_name']}\nRate: {sys['decoderate']}")
 
@@ -147,15 +147,15 @@ class MQTTClient:
                         }
                         self.es.index_document("icad-recorder", recorder_document)
 
-            elif msg.topic == f"{topic_base}/status/calls_active":
+            elif msg.topic == f"{topic_base}status/calls_active":
                 message = "Active Calls:"
                 for call in data["calls"]:
                     message += f"{call['talkgroup']} - {call['talkgrouptag']}"
                 module_logger.debug(message)
                 pass
-            elif msg.topic == f"{topic_base}/feeds/call_end":
+            elif msg.topic == f"{topic_base}feeds/call_end":
                 module_logger.debug(f"Call Ended:\n{data['call']['talkgroup']} - {data['call']['talkgroup_alpha_tag']}")
-            elif msg.topic == f"{topic_base}/feeds/recorders":
+            elif msg.topic == f"{topic_base}feeds/recorders":
                 recording_count = 0
                 idle_count = 0
                 active_count = 0
@@ -185,7 +185,7 @@ class MQTTClient:
                 module_logger.debug(
                     f"{instance_id} Recorder Status:\nRecording: {recording_count}\nIdle: {idle_count}\nActive: {active_count}\nAvailable: {available_count}")
 
-            elif msg.topic == f"{topic_base}/feeds/audio":
+            elif msg.topic == f"{topic_base}feeds/audio":
                 call_data = data.get("call", {})
                 call_data["talkgroup_decimal"] = call_data.get("talkgroup", 0)
                 call_data["instance_id"] = call_data.get("instance_id", "trunk-recorder")
@@ -202,7 +202,7 @@ class MQTTClient:
 
                 # Process the call data
                 process_mqtt_call(self.es, self.global_config_data, wav_data, metadata)
-            elif f"{topic_base}/units" in msg.topic:
+            elif f"{topic_base}units" in msg.topic:
                 pass
             else:
                 module_logger.warning(f"Unknown Message: {msg.topic}")
