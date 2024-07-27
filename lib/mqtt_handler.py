@@ -187,10 +187,11 @@ class MQTTClient:
 
             elif msg.topic == f"{topic_base}feeds/audio":
                 call_data = data.get("call", {})
-                call_data["talkgroup_decimal"] = call_data.get("talkgroup", 0)
-                call_data["instance_id"] = data.get("instance_id", "trunk-recorder")
+
                 wav_data = base64.b64decode(call_data.get("audio_wav_base64", ""))
                 metadata = call_data.get("metadata", {})
+                metadata["talkgroup_decimal"] = metadata.get("talkgroup", 0)
+                metadata["instance_id"] = instance_id
 
                 wav_size = len(wav_data)
                 wav_size_kb = wav_size / 1024
