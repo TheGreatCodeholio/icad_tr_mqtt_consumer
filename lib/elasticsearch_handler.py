@@ -240,6 +240,6 @@ class ElasticSearchClient:
                 index=index_name,
                 body=document
             )
-            module_logger.info("Document indexed successfully:", response)
+            module_logger.info(f"Document indexed successfully: {index_name}")
         except Exception as e:
-            module_logger.info("Error indexing document:", str(e))
+            module_logger.info(f"Error indexing document: {e}")
