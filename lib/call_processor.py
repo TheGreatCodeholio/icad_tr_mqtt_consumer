@@ -209,6 +209,7 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
 
     # Send to ElasticSearch
     if es:
+        module_logger.debug("ES is not None, Indexing transmission")
         es.index_document("icad-transmissions", call_data)
 
     # Send to Players
