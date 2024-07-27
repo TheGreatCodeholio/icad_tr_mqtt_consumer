@@ -209,7 +209,7 @@ class ElasticSearchClient:
             }
         }
 
-        self.create_index_if_not_exists(mapping, self.transmission_index)
+        self.create_index_if_not_exists(self.transmission_index, mapping)
 
     def create_recorder_index(self):
         mapping = {
@@ -226,7 +226,7 @@ class ElasticSearchClient:
             }
         }
 
-        self.create_index_if_not_exists(mapping, self.recorder_index)
+        self.create_index_if_not_exists(self.recorder_index, mapping)
 
     def create_rates_index(self):
         mapping = {
@@ -240,7 +240,7 @@ class ElasticSearchClient:
                 }
             }
         }
-        self.create_index_if_not_exists(mapping, self.rate_index)
+        self.create_index_if_not_exists(self.rate_index, mapping)
 
     def create_duplicates_index(self):
         mapping = {
@@ -258,7 +258,7 @@ class ElasticSearchClient:
                 }
             }
         }
-        self.create_index_if_not_exists(mapping, self.rate_index)
+        self.create_index_if_not_exists(self.rate_index, mapping)
     def index_document(self, index_type, document):
         try:
             if index_type == self.transmission_index:
