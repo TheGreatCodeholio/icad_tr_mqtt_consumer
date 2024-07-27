@@ -27,18 +27,20 @@ class ElasticSearchClient:
         self.create_duplicates_index()
 
     def create_index_if_not_exists(self, index_name, mapping):
-        if not self.client.indices.exists(index=index_name):
-            try:
+        try:
+            module_logger.info(f"Checking if index {index_name} exists")
+            if not self.client.indices.exists(index=index_name):
+                module_logger.info(f"Index {index_name} does not exist. Creating index.")
                 self.client.indices.create(index=index_name, body=mapping)
                 module_logger.info(f"Index {index_name} created successfully.")
-            except exceptions.RequestError as e:
-                module_logger.error(f"RequestError while creating index {index_name}: {e.info}")
-            except exceptions.BadRequestError as e:
-                module_logger.error(f"BadRequestError while creating index {index_name}: {e.info}")
-            except Exception as e:
-                module_logger.error(f"Error creating index {index_name}: {str(e)}")
-        else:
-            module_logger.info(f"Index {index_name} already exists")
+            else:
+                module_logger.info(f"Index {index_name} already exists.")
+        except exceptions.RequestError as e:
+            module_logger.error(f"RequestError while creating index {index_name}: {e.info}")
+        except exceptions.BadRequestError as e:
+            module_logger.error(f"BadRequestError while creating index {index_name}: {e.info}")
+        except Exception as e:
+            module_logger.error(f"Error creating index {index_name}: {str(e)}")
 
     def create_transmission_index(self):
         mapping = {
