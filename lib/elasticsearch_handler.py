@@ -1,5 +1,5 @@
 import logging
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, exceptions
 
 module_logger = logging.getLogger('icad_tr_consumer.elastic_search')
 
@@ -15,7 +15,7 @@ class ElasticSearchClient:
         self.client = Elasticsearch(
             hosts=[self.config["url"]],
             ca_certs=self.config.get("ca_cert", None),
-            basic_auth=(self.config['user'], self.config['password'])
+            basic_auth=(self.config['username'], self.config['password'])
         )
 
         self.create_indices()
@@ -30,8 +30,13 @@ class ElasticSearchClient:
         if not self.client.indices.exists(index=index_name):
             try:
                 self.client.indices.create(index=index_name, body=mapping)
+                module_logger.info(f"Index {index_name} created successfully.")
+            except exceptions.RequestError as e:
+                module_logger.error(f"RequestError while creating index {index_name}: {e.info}")
+            except exceptions.BadRequestError as e:
+                module_logger.error(f"BadRequestError while creating index {index_name}: {e.info}")
             except Exception as e:
-                f"Error creating index: {str(e)}"
+                module_logger.error(f"Error creating index {index_name}: {str(e)}")
         else:
             module_logger.info(f"Index {index_name} already exists")
 
