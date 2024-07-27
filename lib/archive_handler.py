@@ -8,7 +8,7 @@ module_logger = logging.getLogger('icad_tr_consumer.archive')
 
 
 def archive_files(archive_config, source_path, call_data):
-    mp3_audio_path = None
+    mp3_url_path = None
     wav_url_path = None
     m4a_url_path = None
     json_url_path = None
