@@ -145,7 +145,7 @@ class MQTTClient:
                             "decode_rate": sys['decoderate'],
                             "timestamp": time.time(),
                         }
-                        self.es.index_document("icad-recorder", recorder_document)
+                        self.es.index_document("icad-rates", recorder_document)
 
             elif msg.topic == f"{topic_base}status/calls_active":
                 message = "Active Calls:"
@@ -180,7 +180,7 @@ class MQTTClient:
                         "recording_count": recording_count,
                         "timestamp": time.time(),
                     }
-                    self.es.index_document("icad-recorder", recorder_document)
+                    self.es.index_document("icad-recorders", recorder_document)
 
                 module_logger.debug(
                     f"{instance_id} Recorder Status:\nRecording: {recording_count}\nIdle: {idle_count}\nActive: {active_count}\nAvailable: {available_count}")

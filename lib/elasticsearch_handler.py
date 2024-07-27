@@ -221,7 +221,7 @@ class ElasticSearchClient:
                 }
             }
         }
-        self.create_index_if_not_exists(self.rate_index, mapping)
+        self.create_index_if_not_exists(self.duplicate_index, mapping)
     def index_document(self, index_type, document):
         try:
             if index_type == self.transmission_index:
