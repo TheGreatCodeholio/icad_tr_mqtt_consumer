@@ -132,7 +132,7 @@ class MQTTClient:
             else:
                 module_logger.warning(f"No Instance ID")
 
-            topic_base = self.topic.split("#", "trunk-recorder")[0]
+            topic_base = self.topic.split("#")[0]
 
             if msg.topic == f"{topic_base}/feeds/rates":
                 for sys in data.get("rates", {}):
