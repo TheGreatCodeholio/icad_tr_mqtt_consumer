@@ -5,6 +5,7 @@ import json
 import queue
 import threading
 import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 import paho.mqtt.client as mqtt
@@ -206,6 +207,7 @@ class MQTTClient:
             else:
                 module_logger.warning(f"Unknown Message: {msg.topic}")
         except Exception as e:
+            traceback.print_exc()
             module_logger.error(f"Error processing message: {e}")
 
         process_time = time.time() - start_time

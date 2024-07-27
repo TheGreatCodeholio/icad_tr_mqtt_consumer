@@ -48,43 +48,6 @@ class ElasticSearchClient:
         mapping = {
             "mappings": {
                 "dynamic": "false",
-                "dynamic_templates": [
-                    {
-                        "all_text_fields": {
-                            "match_mapping_type": "string",
-                            "mapping": {
-                                "analyzer": "iq_text_base",
-                                "fields": {
-                                    "delimiter": {
-                                        "analyzer": "iq_text_delimiter",
-                                        "type": "text",
-                                        "index_options": "freqs"
-                                    },
-                                    "joined": {
-                                        "search_analyzer": "q_text_bigram",
-                                        "analyzer": "i_text_bigram",
-                                        "type": "text",
-                                        "index_options": "freqs"
-                                    },
-                                    "prefix": {
-                                        "search_analyzer": "q_prefix",
-                                        "analyzer": "i_prefix",
-                                        "type": "text",
-                                        "index_options": "docs"
-                                    },
-                                    "enum": {
-                                        "ignore_above": 2048,
-                                        "type": "keyword"
-                                    },
-                                    "stem": {
-                                        "analyzer": "iq_text_stem",
-                                        "type": "text"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ],
                 "properties": {
                     "instance_id": {"type": "keyword"},
                     "audio_type": {"type": "keyword"},
