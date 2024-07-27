@@ -8,6 +8,7 @@ module_logger = logging.getLogger('icad_tr_consumer.archive')
 
 
 def archive_files(archive_config, source_path, call_data):
+    mp3_audio_path = None
     wav_url_path = None
     m4a_url_path = None
     json_url_path = None
@@ -42,6 +43,7 @@ def archive_files(archive_config, source_path, call_data):
 
     wav_filename = call_data.get("filename")
     m4a_filename = wav_filename.replace(".wav", ".m4a")
+    mp3_file_name = wav_filename.replace(".wav", ".mp3")
     json_filename = wav_filename.replace(".wav", ".json")
 
     source_wav_path = os.path.join(source_path, wav_filename)
@@ -49,6 +51,9 @@ def archive_files(archive_config, source_path, call_data):
 
     source_m4a_path = os.path.join(source_path, m4a_filename)
     destination_m4a_path = os.path.join(folder_path, m4a_filename)
+
+    source_mp3_path = os.path.join(source_path, mp3_file_name)
+    destination_mp3_path = os.path.join(folder_path, mp3_file_name)
 
     source_json_path = os.path.join(source_path, json_filename)
     destination_json_path = os.path.join(folder_path, json_filename)
@@ -73,6 +78,14 @@ def archive_files(archive_config, source_path, call_data):
                     m4a_url_path = upload_response
             else:
                 module_logger.warning("Skipping archive for M4A file. File does not exist.")
+        elif extension == ".mp3":
+            if os.path.isfile(source_mp3_path):
+                upload_response = archive_class.upload_file(source_mp3_path, destination_mp3_path,
+                                                            generated_folder_path)
+                if upload_response:
+                    mp3_url_path = upload_response
+            else:
+                module_logger.warning("Skipping archive for MP3 file. File does not exist.")
         elif extension == ".json":
             if os.path.isfile(source_json_path):
                 upload_response = archive_class.upload_file(source_json_path, destination_json_path,
@@ -88,4 +101,4 @@ def archive_files(archive_config, source_path, call_data):
         archive_class.clean_files(os.path.join(archive_config.get("archive_path"), system_short_name),
                                   archive_config.get("archive_days", 1))
 
-    return wav_url_path, m4a_url_path, json_url_path
+    return wav_url_path, m4a_url_path, mp3_url_path, json_url_path

@@ -24,11 +24,17 @@ message_history = {}
 history_lock = threading.Lock()
 
 
-def is_duplicate(message1, message2, time_tolerance=1, length_tolerance=0.3):
+def is_duplicate(message1, message2, time_tolerance=1, length_tolerance=1, check_same_instance_id=False):
     start_time1 = message1.get("start_time")
     start_time2 = message2.get("start_time")
     length1 = float(message1.get("call_length"))
     length2 = float(message2.get("call_length"))
+    instance_id_1 = message1.get("instance_id")
+    instance_id_2 = message2.get("instance_id")
+
+    if not check_same_instance_id:
+        if instance_id_1 == instance_id_2:
+            return False
 
     if (start_time1 - time_tolerance <= start_time2 <= start_time1 + time_tolerance) and \
             (length1 - length_tolerance <= length2 <= length1 + length_tolerance):
@@ -36,7 +42,7 @@ def is_duplicate(message1, message2, time_tolerance=1, length_tolerance=0.3):
     return False
 
 
-def process_mqtt_call(global_config_data, wav_data, call_data):
+def process_mqtt_call(es, global_config_data, wav_data, call_data):
     m4a_exists = False
     mp3_exists = False
     short_name = call_data.get("short_name", "")
@@ -68,7 +74,7 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
                 if is_duplicate(existing_message, call_data,
                                 system_config.get("duplicate_transmission_detection", {}).get(
                                         "start_difference_threshold", []),
-                                system_config.get("duplicate_transmission_detection", {}).get("length_threshold", [])):
+                                system_config.get("duplicate_transmission_detection", {}).get("length_threshold", []), system_config.get("duplicate_transmission_detection", {}).get("check_same_instance", [])):
                     module_logger.info(
                         f"Duplicate message detected from talkgroup {tg}, Current talkgroup {talkgroup_decimal}")
                     duplicate_detected = True
@@ -84,11 +90,25 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
                     message_history[short_name][tg] = []
                 message_history[short_name][tg].append(call_data)
 
-                # Ensure only the 5 most recent messages are kept
-                if len(message_history[short_name][tg]) > 5:
-                    message_history[short_name][tg] = message_history[short_name][tg][-5:]
+                # Ensure only the 15 most recent messages are kept
+                if len(message_history[short_name][tg]) > 15:
+                    message_history[short_name][tg] = message_history[short_name][tg][-15:]
 
         if duplicate_detected:
+            if es:
+                duplicate_document = {
+                    "instance_id": call_data.get("instance_id"),
+                    "short_name": call_data.get("short_name"),
+                    "talkgroup": call_data.get("talkgroup"),
+                    "talkgroup_alpha_tag": call_data.get("talkgroup_alpha_tag"),
+                    "talkgroup_description": call_data.get("talkgroup_description"),
+                    "talkgroup_group": call_data.get("talkgroup_group"),
+                    "talkgroup_group_tag": call_data.get("talkgroup_group_tag"),
+                    "timestamp": call_data.get("start_time")
+                }
+
+                es.index_document("icad-duplicates", duplicate_document)
+
             module_logger.warning("Duplicate message detected from talkgroup. Skipping message")
             return
 
@@ -145,6 +165,8 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
             call_data["tones"] = tone_detect_result
             module_logger.info(f"Tone Detection Complete")
             module_logger.debug(call_data.get("tones"))
+    else:
+        call_data["tones"] = {"hi_low_tone": [], "two_tone": [], "long_tone": []}
 
     # Transcribe Audio
     if system_config.get("transcribe", {}).get("enabled", 0) == 1:
@@ -159,6 +181,8 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
             call_data["transcript"] = transcribe_result
             module_logger.info(f"Audio Transcribe Complete")
             module_logger.debug(call_data.get("transcript"))
+    else:
+        call_data["transcript"] = {"transcript": "No Transcribe configured", "segments": [], "process_time_seconds": 0, "addresses": ""}
 
     # Resave JSON with new Transcript and Tone Data.
     try:
@@ -168,18 +192,24 @@ def process_mqtt_call(global_config_data, wav_data, call_data):
 
     # Archive Audio Files
     if system_config.get("archive", {}).get("enabled", 0) == 1:
-        wav_url, m4a_url, json_url = archive_files(system_config.get("archive", {}),
+        wav_url, m4a_url, mp3_url, json_url = archive_files(system_config.get("archive", {}),
                                                    global_config_data.get("temp_file_path", "/dev/shm"), call_data)
         if wav_url:
             call_data["audio_wav_url"] = wav_url
         if m4a_url:
             call_data["audio_m4a_url"] = m4a_url
+        if mp3_url:
+            call_data["audio_mp3_url"] = mp3_url
 
-        if wav_url is None and m4a_url is None and json_url is None:
+        if wav_url is None and m4a_url is None and mp3_url is None and json_url is None:
             module_logger.error("No Files Uploaded to Archive")
         else:
             module_logger.info(f"Archive Complete")
-            module_logger.debug(f"Url Paths:\n{call_data.get('audio_wav_url')}\n{call_data.get('audio_m4a_url')}")
+            module_logger.debug(f"Url Paths:\n{call_data.get('audio_wav_url')}\n{call_data.get('audio_m4a_url')}\n{call_data.get('audio_mp3_url')}")
+
+    # Send to ElasticSearch
+    if es:
+        es.index_document("icad-transmissions", call_data)
 
     # Send to Players
 

@@ -11,17 +11,41 @@ import paho.mqtt.client as mqtt
 import logging
 
 from lib.call_processor import process_mqtt_call
+from lib.elasticsearch_handler import ElasticSearchClient
 
 module_logger = logging.getLogger('icad_tr_consumer.mqtt_client')
+
+call_states = [
+    "MONITORING",
+    "RECORDING",
+    "INACTIVE",
+    "ACTIVE",
+    "IDLE",
+    "COMPLETED",
+    "STOPPED",
+    "AVAILABLE"
+]
+
+monitor_states = [
+    "MONITORING",
+    "UNKNOWN_TG",
+    "IGNORED_TG",
+    "NO_SOURCE",
+    "NO_RECORDER",
+    "ENCRYPTED",
+    "DUPLICATE",
+    "SUPERSEDED"
+]
 
 
 class MQTTClient:
     def __init__(self, global_config_data, num_workers=8):
+        self.es_config_data = global_config_data.get("elasticsearch", {})
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.global_config_data = global_config_data
         self.broker_address = global_config_data.get("mqtt", {}).get("hostname", "")
         self.port = global_config_data.get("mqtt", {}).get("port", 1883)
-        self.topic = global_config_data.get("mqtt", {}).get("topic", "trunk_recorder/feeds/audio")
+        self.topic = global_config_data.get("mqtt", {}).get("topic", "trunk_recorder/#")
         self.username = global_config_data.get("mqtt", {}).get("username", "")
         self.password = global_config_data.get("mqtt", {}).get("password", "")
         self.ca_certs = global_config_data.get("mqtt", {}).get("ca_certs", "")
@@ -40,7 +64,7 @@ class MQTTClient:
         self.client.on_disconnect = self.on_disconnect
         self.last_calls = {}
 
-
+        self.es = ElasticSearchClient(self.es_config_data) if self.es_config_data.get("enabled") != 1 else None
 
     def on_connect(self, client, userdata, flags, reason_code, properties):
         if flags.session_present:
@@ -90,33 +114,103 @@ class MQTTClient:
         module_logger.debug(f"MQTT - Exiting Queue Process Loop: {self.message_queue.qsize()}")
 
     def process_message(self, msg):
-        try:
-            module_logger.debug("Processing message from queue.")
-            start_time = time.time()
+        module_logger.debug("Processing message from queue.")
+        start_time = time.time()
 
+        try:
             # Load call data and audio from MQTT
             data = json.loads(msg.payload)
-            call_data = data.get("call", {})
-            call_data["talkgroup_decimal"] = call_data.get("talkgroup", 0)
-            wav_data = base64.b64decode(call_data.get("audio_wav_base64", ""))
-            metadata = call_data.get("metadata", {})
 
-            wav_size = len(wav_data)
-            wav_size_kb = wav_size / 1024
+            instance_id = data.get("instance_id")
 
-            module_logger.info(f"MQTT - New Message received from {msg.topic}")
-            module_logger.debug(f"Payload size: {len(msg.payload)} bytes")
-            module_logger.debug(f"Decoded WAV data size: {wav_size} bytes ({wav_size_kb:.2f} KB)")
-            module_logger.debug(f"Message Metadata: {metadata}")
+            if instance_id:
+                if instance_id == "trunk-recorder":
+                    module_logger.warning(f"Default instance id detected!")
 
-            # Process the call data
-            process_mqtt_call(self.global_config_data, wav_data, metadata)
+                module_logger.debug(f"Instance ID {instance_id}")
+            else:
+                module_logger.warning(f"No Instance ID")
 
-            process_time = time.time() - start_time
-            module_logger.info(f"Message Processing Complete")
-            module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
+            topic_base = self.topic.split("#", "trunk-recorder")[0]
+
+            if msg.topic == f"{topic_base}/feeds/rates":
+                for sys in data.get("rates", {}):
+                    module_logger.debug(f"System: {sys['sys_name']}\nRate: {sys['decoderate']}")
+
+                    if self.es:
+                        recorder_document = {
+                            "instance_id": instance_id,
+                            "short_name": sys['sys_name'],
+                            "decode_rate": sys['decoderate'],
+                            "timestamp": time.time(),
+                        }
+                        self.es.index_document("icad-recorder", recorder_document)
+
+            elif msg.topic == f"{topic_base}/status/calls_active":
+                message = "Active Calls:"
+                for call in data["calls"]:
+                    message += f"{call['talkgroup']} - {call['talkgrouptag']}"
+                module_logger.debug(message)
+                pass
+            elif msg.topic == f"{topic_base}/feeds/call_end":
+                module_logger.debug(f"Call Ended:\n{data['call']['talkgroup']} - {data['call']['talkgroup_alpha_tag']}")
+            elif msg.topic == f"{topic_base}/feeds/recorders":
+                recording_count = 0
+                idle_count = 0
+                active_count = 0
+                available_count = 0
+
+                for recorder in data["recorders"]:
+                    if recorder["rec_state"] == 1:
+                        recording_count += 1
+                    elif recorder["rec_state"] == 3:
+                        active_count += 1
+                    elif recorder["rec_state"] == 4:
+                        idle_count += 1
+                    elif recorder["rec_state"] == 7:
+                        available_count += 1
+
+                if self.es:
+                    recorder_document = {
+                        "instance_id": instance_id,
+                        "active_count": active_count,
+                        "available_count": available_count,
+                        "idle_count": idle_count,
+                        "recording_count": recording_count,
+                        "timestamp": time.time(),
+                    }
+                    self.es.index_document("icad-recorder", recorder_document)
+
+                module_logger.debug(
+                    f"{instance_id} Recorder Status:\nRecording: {recording_count}\nIdle: {idle_count}\nActive: {active_count}\nAvailable: {available_count}")
+
+            elif msg.topic == f"{topic_base}/feeds/audio":
+                call_data = data.get("call", {})
+                call_data["talkgroup_decimal"] = call_data.get("talkgroup", 0)
+                call_data["instance_id"] = call_data.get("instance_id", "trunk-recorder")
+                wav_data = base64.b64decode(call_data.get("audio_wav_base64", ""))
+                metadata = call_data.get("metadata", {})
+
+                wav_size = len(wav_data)
+                wav_size_kb = wav_size / 1024
+
+                module_logger.info(f"MQTT - New Message received from {msg.topic}")
+                module_logger.debug(f"Payload size: {len(msg.payload)} bytes")
+                module_logger.debug(f"Decoded WAV data size: {wav_size} bytes ({wav_size_kb:.2f} KB)")
+                module_logger.debug(f"Message Metadata: {metadata}")
+
+                # Process the call data
+                process_mqtt_call(self.es, self.global_config_data, wav_data, metadata)
+            elif f"{topic_base}/unit" in msg.topic:
+                pass
+            else:
+                module_logger.warning(f"Unknown Message: {msg.topic}")
         except Exception as e:
             module_logger.error(f"Error processing message: {e}")
+
+        process_time = time.time() - start_time
+        module_logger.info(f"Message Processing Complete")
+        module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
 
     def start_mqtt_connection(self):
         module_logger.info("Connect")
@@ -157,4 +251,3 @@ class MQTTClient:
         self.client.loop_stop()  # Stop the network loop
         self.client.disconnect()  # Disconnect the MQTT client
         self.executor.shutdown(wait=True)  # Shutdown the executor, waiting for tasks to complete
-
