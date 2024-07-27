@@ -39,6 +39,8 @@ class ElasticSearchClient:
             module_logger.error(f"RequestError while creating index {index_name}: {e.info}")
         except exceptions.BadRequestError as e:
             module_logger.error(f"BadRequestError while creating index {index_name}: {e.info}")
+        except exceptions.TransportError as e:
+            module_logger.error(f"TransportError while creating index {index_name}: {e.info}")
         except Exception as e:
             module_logger.error(f"Error creating index {index_name}: {str(e)}")
 
