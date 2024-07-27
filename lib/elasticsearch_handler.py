@@ -222,6 +222,7 @@ class ElasticSearchClient:
             }
         }
         self.create_index_if_not_exists(self.duplicate_index, mapping)
+
     def index_document(self, index_type, document):
         try:
             if index_type == self.transmission_index:
@@ -240,6 +241,6 @@ class ElasticSearchClient:
                 index=index_name,
                 body=document
             )
-            module_logger.info(f"Document indexed successfully: {index_name}")
+            module_logger.info(f"Document indexed successfully: {index_name}\n{document}")
         except Exception as e:
             module_logger.info(f"Error indexing document: {e}")
