@@ -67,7 +67,7 @@ class ElasticSearchClient:
                             "len": {"type": "float"},
                             "pos": {"type": "float"},
                             "spike_count": {"type": "integer"},
-                            "time": {"type": "date"}
+                            "time": {"type": "date", "format": "strict_date_optional_time||epoch_second"}
                         }
                     },
                     "freq_error": {"type": "integer"},
@@ -85,8 +85,8 @@ class ElasticSearchClient:
                             "emergency": {"type": "integer"},
                             "pos": {"type": "integer"},
                             "signal_system": {"type": "keyword"},
-                            "src": {"type": "integer"},
-                            "tag": {"type": "text"},
+                            "src": {"type": "keyword"},
+                            "tag": {"type": "keyword"},
                             "time": {
                                 "type": "date",
                                 "format": "strict_date_optional_time||epoch_second"
@@ -160,8 +160,8 @@ class ElasticSearchClient:
                                     "segment_id": {"type": "integer"},
                                     "start": {"type": "float"},
                                     "text": {"type": "text"},
-                                    "unit_tag": {"type": "text"},
-                                    "words": {"type": "keyword"}
+                                    "unit_tag": {"type": "keyword"},
+                                    "words": {"type": "text"}
                                 }
                             },
                             "transcript": {"type": "text"}
