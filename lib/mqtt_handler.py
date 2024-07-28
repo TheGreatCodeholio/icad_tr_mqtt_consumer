@@ -192,6 +192,7 @@ class MQTTClient:
                 metadata = call_data.get("metadata", {})
                 metadata["talkgroup_decimal"] = metadata.get("talkgroup", 0)
                 metadata["instance_id"] = instance_id
+                metadata["timestamp"] = time.time()
 
                 wav_size = len(wav_data)
                 wav_size_kb = wav_size / 1024

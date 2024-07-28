@@ -102,11 +102,10 @@ class ElasticSearchClient:
                         "format": "strict_date_optional_time||epoch_second"
                     },
                     "talkgroup": {"type": "integer"},
-                    "talkgroup_alpha_tag": {"type": "text"},
-                    "talkgroup_description": {"type": "text"},
-                    "talkgroup_group": {"type": "text"},
-                    "talkgroup_group_tag": {"type": "text"},
-                    "talkgroup_tag": {"type": "text"},
+                    "talkgroup_description": {"type": "keyword"},
+                    "talkgroup_group": {"type": "keyword"},
+                    "talkgroup_group_tag": {"type": "keyword"},
+                    "talkgroup_tag": {"type": "keyword"},
                     "tdma_slot": {"type": "integer"},
                     "timestamp": {
                         "type": "date",
@@ -158,11 +157,11 @@ class ElasticSearchClient:
                                 "type": "nested",
                                 "properties": {
                                     "end": {"type": "float"},
-                                    "segement_id": {"type": "integer"},
+                                    "segment_id": {"type": "integer"},
                                     "start": {"type": "float"},
                                     "text": {"type": "text"},
                                     "unit_tag": {"type": "text"},
-                                    "words": {"type": "text"}
+                                    "words": {"type": "keyword"}
                                 }
                             },
                             "transcript": {"type": "text"}
@@ -212,10 +211,10 @@ class ElasticSearchClient:
                 "properties": {
                     "instance_id": {"type": "keyword"},
                     "talkgroup": {"type": "integer"},
-                    "talkgroup_alpha_tag": {"type": "text"},
-                    "talkgroup_description": {"type": "text"},
-                    "talkgroup_group": {"type": "text"},
-                    "talkgroup_group_tag": {"type": "text"},
+                    "talkgroup_tag": {"type": "keyword"},
+                    "talkgroup_description": {"type": "keyword"},
+                    "talkgroup_group": {"type": "keyword"},
+                    "talkgroup_group_tag": {"type": "keyword"},
                     "short_name": {"type": "keyword"},
                     "timestamp": {"type": "date", "format": "strict_date_optional_time||epoch_second"},
                 }
