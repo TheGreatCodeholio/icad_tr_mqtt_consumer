@@ -127,6 +127,7 @@ class MQTTClient:
             if instance_id:
                 if instance_id == "trunk-recorder":
                     module_logger.warning(f"Default instance id detected! Can not process, please update the instance_id configuration.")
+                    return
 
                 module_logger.debug(f"Instance ID {instance_id}")
             else:
