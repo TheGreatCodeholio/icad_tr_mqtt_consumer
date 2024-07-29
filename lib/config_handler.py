@@ -17,6 +17,13 @@ default_config = {
         "certfile": "",
         "keyfile": ""
     },
+    "elasticsearch": {
+        "enabled": 0,
+        "url": "https://elasticsearch.example.com",
+        "username": "elastic",
+        "password": "12340987",
+        "ca_certificate": ""
+    },
     "systems": {
         "example-system": {
             "duplicate_transmission_detection": {
@@ -112,6 +119,13 @@ default_config = {
                     "system_id": 1111,
                     "rdio_url": "http://example.com:3000/api/trunk-recorder-call-upload",
                     "rdio_api_key": "example-api-key"
+                }
+            ],
+            "trunk_player_systems": [
+                {
+                    "enabled": 0,
+                    "api_url": "https://player.example.com/api_v2/add_transmission/",
+                    "api_key": "1234-1234"
                 }
             ],
             "icad_alerting": {

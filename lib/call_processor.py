@@ -14,6 +14,7 @@ from lib.openmhz_handler import upload_to_openmhz
 from lib.rdio_handler import upload_to_rdio
 from lib.tone_detect_handler import get_tones
 from lib.transcibe_handler import upload_to_transcribe
+from lib.trunk_player_handler import upload_to_trunk_player
 from lib.webhook_handler import WebHook
 
 module_logger = logging.getLogger('icad_tr_consumer.call_processing')
@@ -73,8 +74,10 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
             for existing_message in tg_history:
                 if is_duplicate(existing_message, call_data,
                                 system_config.get("duplicate_transmission_detection", {}).get(
-                                        "start_difference_threshold", []),
-                                system_config.get("duplicate_transmission_detection", {}).get("length_threshold", []), system_config.get("duplicate_transmission_detection", {}).get("check_same_instance", [])):
+                                    "start_difference_threshold", []),
+                                system_config.get("duplicate_transmission_detection", {}).get("length_threshold", []),
+                                system_config.get("duplicate_transmission_detection", {}).get("check_same_instance",
+                                                                                              [])):
                     module_logger.info(
                         f"Duplicate message detected from talkgroup {tg}, Current talkgroup {talkgroup_decimal}")
                     duplicate_detected = True
@@ -182,7 +185,14 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
             module_logger.info(f"Audio Transcribe Complete")
             module_logger.debug(call_data.get("transcript"))
     else:
-        call_data["transcript"] = {"transcript": "No Transcribe configured", "segments": [], "process_time_seconds": 0, "addresses": ""}
+        call_data["transcript"] = {"transcript": "No Transcribe configured", "segments": [], "process_time_seconds": 0,
+                                   "addresses": ""}
+
+    play_length = 0
+    for freq in call_data.get("freqList", []):
+        play_length += freq.get("len")
+
+    call_data["play_length"] = play_length
 
     # Resave JSON with new Transcript and Tone Data.
     try:
@@ -193,7 +203,8 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
     # Archive Audio Files
     if system_config.get("archive", {}).get("enabled", 0) == 1:
         wav_url, m4a_url, mp3_url, json_url = archive_files(system_config.get("archive", {}),
-                                                   global_config_data.get("temp_file_path", "/dev/shm"), call_data)
+                                                            global_config_data.get("temp_file_path", "/dev/shm"),
+                                                            call_data)
         if wav_url:
             call_data["audio_wav_url"] = wav_url
         if m4a_url:
@@ -205,7 +216,8 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
             module_logger.error("No Files Uploaded to Archive")
         else:
             module_logger.info(f"Archive Complete")
-            module_logger.debug(f"Url Paths:\n{call_data.get('audio_wav_url')}\n{call_data.get('audio_m4a_url')}\n{call_data.get('audio_mp3_url')}")
+            module_logger.debug(
+                f"Url Paths:\n{call_data.get('audio_wav_url')}\n{call_data.get('audio_m4a_url')}\n{call_data.get('audio_mp3_url')}")
 
     # Send to ElasticSearch
     if es:
@@ -257,6 +269,22 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
                 continue
         else:
             module_logger.warning(f"RDIO system is disabled: {rdio.get('rdio_url')}")
+            continue
+
+    # Upload to Trunk Player
+    for tp in system_config.get("trunk_player_systems", []):
+        if tp.get("enabled", 0) == 1:
+            if not m4a_exists:
+                module_logger.warning(f"No M4A file can't send to Trunk Player")
+                continue
+            try:
+                upload_to_trunk_player(tp, call_data)
+            except Exception as e:
+                module_logger.error(f"Failed to upload to Trunk Player server: {tp.get('api_url')}. Error: {str(e)}",
+                                    exc_info=True)
+                continue
+        else:
+            module_logger.warning(f"Trunk Player system is disabled: {tp.get('api_url')}")
             continue
 
     # Upload to Alerting

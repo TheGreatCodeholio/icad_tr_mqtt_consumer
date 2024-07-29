@@ -11,8 +11,21 @@
     "certfile": "",
     "keyfile": ""
   },
+  "elasticsearch": {
+        "enabled": 0,
+        "url": "https://elasticsearch.example.com",
+        "username": "elastic",
+        "password": "12340987",
+        "ca_certificate": ""
+  },
   "systems": {
     "example-system": {
+      "duplicate_transmission_detection": {
+        "enabled": 0,
+        "start_difference_threshold": 0.2,
+        "length_threshold": 0.2,
+        "simulcast_talkgroups": []
+      },
       "archive": {
         "enabled": 0,
         "archive_type": "scp",
@@ -47,9 +60,14 @@
         }
       },
       "audio_compression": {
-        "enabled": 0,
-        "sample_rate": 16000,
-        "bitrate": 96
+        "m4a_enabled": 0,
+        "m4a_sample_rate": 16000,
+        "m4a_bitrate": 96,
+        "m4a_normalization": true,
+        "mp3_enabled": 0,
+        "mp3_sample_rate": 16000,
+        "mp3_bitrate": 96,
+        "mp3_normalization": true
       },
       "icad_tone_detect_legacy": [
         {
@@ -109,15 +127,26 @@
           "rdio_api_key": "example-api-key"
         }
       ],
+      "trunk_player_systems": [
+        {
+          "enabled": 0,
+          "api_url": "https://player.example.com/api_v2/add_transmission/",
+          "api_key": "1234-1234"
+        }
+      ],
       "webhooks": [
         {
           "enabled": 0,
           "webhook_url": "https://example.com",
-          "webhook_header": {"Authorization": "1234-1234"},
+          "webhook_header": {
+            "Authorization": "1234-1234"
+          },
           "webhook_body": {
             "content": "\n{system_short_name} {talkgroup_alpha_tag} - {timestamp}\n\n{transcript}\n\n{audio_mp3_url}"
           },
-          "allowed_talkgroups": ["*"]
+          "allowed_talkgroups": [
+            "*"
+          ]
         }
       ],
       "talkgroup_config": {
