@@ -23,7 +23,7 @@ def upload_to_trunk_player(player_config, call_data):
             "Content-Type": "application/json"
         }
         trunk_player_json = {"auth_token": player_config.get("api_key"), "file_path": f"{generated_folder_path}/",
-                             "file_name": call_data.get("filename").split(".wav")[-1], "m4a": True}
+                             "file_name": call_data.get("filename", ".wav").replace(".wav", ""), "m4a": True}
         module_logger.info(f'Trunk Player Upload: {trunk_player_json}')
         response = requests.post(url, headers=headers, json=trunk_player_json)
         response.raise_for_status()
