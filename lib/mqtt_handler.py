@@ -236,7 +236,7 @@ class MQTTClient:
                             "short_name": call_data.get("sys_name", "Unknown"),
                             "timestamp": call_data.get("start_time", time.time()),
                         }
-                        self.es.index_document("icad-recorders", unit_document)
+                        self.es.index_document("icad-units", unit_document)
                     process_time = time.time() - start_time
                     module_logger.info(f"Message Processing Complete")
                     module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
