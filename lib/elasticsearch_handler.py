@@ -11,6 +11,7 @@ class ElasticSearchClient:
         self.rate_index = "icad-rates"
         self.recorder_index = "icad-recorders"
         self.duplicate_index = "icad-duplicates"
+        self.unit_index = "icad-units"
 
         self.client = Elasticsearch(
             hosts=[self.config["url"]],
@@ -25,6 +26,7 @@ class ElasticSearchClient:
         self.create_transmission_index()
         self.create_recorder_index()
         self.create_duplicates_index()
+        self.create_units_index()
 
     def create_index_if_not_exists(self, index_name, mapping):
         try:
@@ -221,6 +223,30 @@ class ElasticSearchClient:
             }
         }
         self.create_index_if_not_exists(self.duplicate_index, mapping)
+
+    def create_units_index(self):
+        mapping = {
+            "mappings": {
+                "dynamic": "false",
+                "properties": {
+                    "instance_id": {"type": "keyword"},
+                    "unit": {"type": "integer"},
+                    "unit_alpha_tag": {"type": "keyword"},
+                    "talkgroup": {"type": "integer"},
+                    "talkgroup_alpha_tag": {"type": "keyword"},
+                    "talkgroup_description": {"type": "keyword"},
+                    "talkgroup_group": {"type": "keyword"},
+                    "talkgroup_tag": {"type": "keyword"},
+                    "talkgroup_patches": {"type": "text"},
+                    "freq": {"type": "long"},
+                    "length": {"type": "float"},
+                    "encrypted": {"type": "boolean"},
+                    "short_name": {"type": "keyword"},
+                    "timestamp": {"type": "date", "format": "strict_date_optional_time||epoch_second"},
+                }
+            }
+        }
+        self.create_index_if_not_exists(self.unit_index, mapping)
 
     def index_document(self, index_type, document):
         try:

@@ -98,7 +98,7 @@ class MQTTClient:
 
     def process_messages(self):
         while not self.error_flag.is_set():  # Check if there's an error flag set to stop processing
-            #module_logger.debug(f"MQTT - Waiting for {self.message_queue.qsize()} messages")
+            # module_logger.debug(f"MQTT - Waiting for {self.message_queue.qsize()} messages")
             try:
                 msg = self.message_queue.get(timeout=1)  # Wait for a message with a timeout
                 if msg is not None:
@@ -125,8 +125,8 @@ class MQTTClient:
             instance_id = data.get("instance_id")
 
             if instance_id:
-                # if instance_id == "trunk-recorder":
-                #     module_logger.warning(f"Default instance id detected!")
+                if instance_id == "trunk-recorder":
+                    module_logger.warning(f"Default instance id detected! Can not process, please update the instance_id configuration.")
 
                 module_logger.debug(f"Instance ID {instance_id}")
             else:
@@ -147,6 +147,10 @@ class MQTTClient:
                         }
                         self.es.index_document("icad-rates", recorder_document)
 
+                process_time = time.time() - start_time
+                module_logger.info(f"Message Processing Complete")
+                module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
+
             elif msg.topic == f"{topic_base}status/calls_active":
                 message = "Active Calls:"
                 for call in data["calls"]:
@@ -154,7 +158,7 @@ class MQTTClient:
                 module_logger.debug(message)
                 pass
             elif msg.topic == f"{topic_base}feeds/call_end":
-                module_logger.debug(f"Call Ended:\n{data['call']['talkgroup']} - {data['call']['talkgroup_alpha_tag']}")
+                pass
             elif msg.topic == f"{topic_base}feeds/recorders":
                 recording_count = 0
                 idle_count = 0
@@ -182,6 +186,9 @@ class MQTTClient:
                     }
                     self.es.index_document("icad-recorders", recorder_document)
 
+                process_time = time.time() - start_time
+                module_logger.info(f"Message Processing Complete")
+                module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
                 module_logger.debug(
                     f"{instance_id} Recorder Status:\nRecording: {recording_count}\nIdle: {idle_count}\nActive: {active_count}\nAvailable: {available_count}")
 
@@ -204,17 +211,40 @@ class MQTTClient:
 
                 # Process the call data
                 process_mqtt_call(self.es, self.global_config_data, wav_data, metadata)
-            elif f"{topic_base}units" in msg.topic:
-                pass
-            else:
-                module_logger.warning(f"Unknown Message: {msg.topic}")
+
+                process_time = time.time() - start_time
+                module_logger.info(f"Message Processing Complete")
+                module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
+            elif f"{topic_base}units":
+                if "end" in msg.topic:
+                    if self.es:
+                        call_data = data.get("end", {})
+                        unit_document = {
+                            "instance_id": instance_id,
+                            "unit": call_data.get("unit", -1),
+                            "unit_alpha_tag": call_data.get("unit_alpha_tag", "Unknown"),
+                            "talkgroup": call_data.get("talkgroup", 0),
+                            "talkgroup_alpha_tag": call_data.get("talkgroup_alpha_tag", "Unknown"),
+                            "talkgroup_description": call_data.get("talkgroup_description", "Unknown"),
+                            "talkgroup_group": call_data.get("talkgroup_group", "Unknown"),
+                            "talkgroup_tag": call_data.get("talkgroup_tag", "Unknown"),
+                            "talkgroup_patches": call_data.get("talkgroup_patches", "No Patches"),
+                            "freq": call_data.get("freq", 0),
+                            "length": call_data.get("length", 0),
+                            "encrypted": True if call_data.get("encrypted", 0) == 1 else False,
+                            "short_name": call_data.get("short_name", "Unknown"),
+                            "timestamp": call_data.get("start_time", time.time()),
+                        }
+                        self.es.index_document("icad-recorders", unit_document)
+                    process_time = time.time() - start_time
+                    module_logger.info(f"Message Processing Complete")
+                    module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
+
         except Exception as e:
             traceback.print_exc()
             module_logger.error(f"Error processing message: {e}")
 
-        process_time = time.time() - start_time
-        module_logger.info(f"Message Processing Complete")
-        module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
+
 
     def start_mqtt_connection(self):
         module_logger.info("Connect")
