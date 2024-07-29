@@ -233,7 +233,7 @@ class MQTTClient:
                             "freq": call_data.get("freq", 0),
                             "length": call_data.get("length", 0),
                             "encrypted": True if call_data.get("encrypted", 0) == 1 else False,
-                            "short_name": call_data.get("short_name", "Unknown"),
+                            "short_name": call_data.get("sys_name", "Unknown"),
                             "timestamp": call_data.get("start_time", time.time()),
                         }
                         self.es.index_document("icad-recorders", unit_document)
