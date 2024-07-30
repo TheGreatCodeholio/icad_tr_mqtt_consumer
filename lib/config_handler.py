@@ -13,6 +13,7 @@ default_config = {
         "username": "",
         "password": "",
         "topic": "trunk_recorder/feeds/audio",
+        "unit_log_type": "call",
         "ca_certs": "",
         "certfile": "",
         "keyfile": ""

@@ -52,6 +52,7 @@ class MQTTClient:
         self.ca_certs = global_config_data.get("mqtt", {}).get("ca_certs", "")
         self.certfile = global_config_data.get("mqtt", {}).get("certfile", "")
         self.keyfile = global_config_data.get("mqtt", {}).get("keyfile", "")
+        self.unit_log_type = global_config_data.get("mqtt", {}).get("unit_log_type", "")
 
         self.error_flag = threading.Event()
 
@@ -217,7 +218,7 @@ class MQTTClient:
                 module_logger.info(f"Message Processing Complete")
                 module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
             elif f"{topic_base}units":
-                if "end" in msg.topic:
+                if self.unit_log_type in msg.topic:
                     if self.es:
                         call_data = data.get("end", {})
                         unit_document = {
