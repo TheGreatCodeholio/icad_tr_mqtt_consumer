@@ -258,6 +258,8 @@ class ElasticSearchClient:
                 index_name = self.rate_index
             elif index_type == self.duplicate_index:
                 index_name = self.duplicate_index
+            elif index_type == self.unit_index:
+                index_name = self.unit_index
             else:
                 module_logger.warning(f"Unknown index type {index_type}")
                 return
