@@ -232,7 +232,6 @@ class MQTTClient:
                             "talkgroup_tag": call_data.get("talkgroup_tag", "Unknown"),
                             "talkgroup_patches": call_data.get("talkgroup_patches", "No Patches"),
                             "freq": call_data.get("freq", 0),
-                            "length": call_data.get("length", 0),
                             "encrypted": True if call_data.get("encrypted", 0) == 1 else False,
                             "short_name": call_data.get("sys_name", "Unknown"),
                             "timestamp": call_data.get("start_time", time.time()),
