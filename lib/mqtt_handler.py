@@ -218,9 +218,9 @@ class MQTTClient:
                 module_logger.info(f"Message Processing Complete")
                 module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
             elif f"{topic_base}units":
-                if self.unit_log_type in msg.topic:
+                if msg.topic.split('/')[-1] == "call" and self.unit_log_type == "call":
                     if self.es:
-                        call_data = data.get("end", {})
+                        call_data = data.get("call", {})
                         unit_document = {
                             "instance_id": instance_id,
                             "unit": call_data.get("unit", -1),
@@ -238,9 +238,33 @@ class MQTTClient:
                             "timestamp": call_data.get("start_time", time.time()),
                         }
                         self.es.index_document("icad-units", unit_document)
+
                     process_time = time.time() - start_time
                     module_logger.info(f"Message Processing Complete")
                     module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
+                elif msg.topic.split('/')[-1] == "end" and self.unit_log_type == "end":
+                    if self.es:
+                        call_data = data.get("end", {})
+                        unit_document = {
+                            "instance_id": instance_id,
+                            "unit": call_data.get("unit", -1),
+                            "unit_alpha_tag": call_data.get("unit_alpha_tag", "Unknown"),
+                            "talkgroup": call_data.get("talkgroup", 0),
+                            "talkgroup_alpha_tag": call_data.get("talkgroup_alpha_tag", "Unknown"),
+                            "talkgroup_description": call_data.get("talkgroup_description", "Unknown"),
+                            "talkgroup_group": call_data.get("talkgroup_group", "Unknown"),
+                            "talkgroup_tag": call_data.get("talkgroup_tag", "Unknown"),
+                            "talkgroup_patches": call_data.get("talkgroup_patches", "No Patches"),
+                            "freq": call_data.get("freq", 0),
+                            "encrypted": True if call_data.get("encrypted", 0) == 1 else False,
+                            "short_name": call_data.get("sys_name", "Unknown"),
+                            "timestamp": call_data.get("start_time", time.time()),
+                        }
+                        self.es.index_document("icad-units", unit_document)
+                    process_time = time.time() - start_time
+                    module_logger.info(f"Message Processing Complete")
+                    module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
+
 
         except Exception as e:
             traceback.print_exc()

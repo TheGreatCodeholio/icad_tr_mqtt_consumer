@@ -239,7 +239,6 @@ class ElasticSearchClient:
                     "talkgroup_tag": {"type": "keyword"},
                     "talkgroup_patches": {"type": "text"},
                     "freq": {"type": "long"},
-                    "length": {"type": "float"},
                     "encrypted": {"type": "boolean"},
                     "short_name": {"type": "keyword"},
                     "timestamp": {"type": "date", "format": "strict_date_optional_time||epoch_second"},
