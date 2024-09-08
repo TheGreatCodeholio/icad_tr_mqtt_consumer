@@ -107,6 +107,8 @@ class MQTTClient:
                     # Process the message using a thread pool and handle it completely before marking as done
                     future = self.executor.submit(self.process_message, msg)
                     future.add_done_callback(lambda f: self.message_queue.task_done())
+                else:
+                    module_logger.debug(f"Message is none")
             except queue.Empty as e:
                 module_logger.error(f"No Message Available: {e}")
                 continue  # Continue if no message is available within the timeout period
