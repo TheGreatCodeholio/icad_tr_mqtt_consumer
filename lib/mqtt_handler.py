@@ -66,7 +66,7 @@ class MQTTClient:
         self.client.on_disconnect = self.on_disconnect
         self.last_calls = {}
 
-        self.es = ElasticSearchClient(self.es_config_data) if self.es_config_data.get("enabled") != 1 else None
+        self.es = ElasticSearchClient(self.es_config_data) if self.es_config_data.get("enabled") == 1 else None
 
     def on_connect(self, client, userdata, flags, reason_code, properties):
         if flags.session_present:
