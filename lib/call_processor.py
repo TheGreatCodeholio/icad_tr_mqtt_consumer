@@ -121,6 +121,7 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
     # save files temporarily in /dev/shm
     temp_result = save_temporary_files(global_config_data.get("temp_file_path", "/dev/shm"), wav_data, call_data)
     if not temp_result:
+        module_logger.warning("Temporary files not saved")
         return
 
     # Convert WAV to M4A in tmp /dev/shm
