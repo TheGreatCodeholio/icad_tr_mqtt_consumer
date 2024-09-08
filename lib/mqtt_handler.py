@@ -138,7 +138,7 @@ class MQTTClient:
                 module_logger.warning(f"No Instance ID")
 
             topic_base = self.topic.split("#")[0]
-
+            module_logger.debug(f"Topic Base: {topic_base}")
             if msg.topic == f"{topic_base}feeds/rates":
                 for sys in data.get("rates", {}):
                     module_logger.debug(f"System: {sys['sys_name']}\nRate: {sys['decoderate']}")
