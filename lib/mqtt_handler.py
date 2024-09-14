@@ -47,6 +47,7 @@ class MQTTClient:
         self.broker_address = global_config_data.get("mqtt", {}).get("hostname", "")
         self.port = global_config_data.get("mqtt", {}).get("port", 1883)
         self.topic = global_config_data.get("mqtt", {}).get("topic", "trunk_recorder/#")
+        self.stats_enable = global_config_data.get("mqtt", {}).get("stats_enable", False)
         self.username = global_config_data.get("mqtt", {}).get("username", "")
         self.password = global_config_data.get("mqtt", {}).get("password", "")
         self.ca_certs = global_config_data.get("mqtt", {}).get("ca_certs", "")
@@ -139,7 +140,7 @@ class MQTTClient:
 
             topic_base = self.topic.split("#")[0]
             module_logger.debug(f"Topic Base: {topic_base}")
-            if msg.topic == f"{topic_base}feeds/rates":
+            if msg.topic == f"{topic_base}feeds/rates" and self.stats_enable:
                 for sys in data.get("rates", {}):
                     module_logger.debug(f"System: {sys['sys_name']}\nRate: {sys['decoderate']}")
 
@@ -156,15 +157,15 @@ class MQTTClient:
                 module_logger.info(f"Message Processing Complete")
                 module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
 
-            elif msg.topic == f"{topic_base}status/calls_active":
+            elif msg.topic == f"{topic_base}status/calls_active" and self.stats_enable:
                 message = "Active Calls:"
                 for call in data["calls"]:
                     message += f"{call['talkgroup']} - {call['talkgrouptag']}"
                 module_logger.debug(message)
                 pass
-            elif msg.topic == f"{topic_base}feeds/call_end":
+            elif msg.topic == f"{topic_base}feeds/call_end" and self.stats_enable:
                 pass
-            elif msg.topic == f"{topic_base}feeds/recorders":
+            elif msg.topic == f"{topic_base}feeds/recorders" and self.stats_enable:
                 recording_count = 0
                 idle_count = 0
                 active_count = 0
@@ -220,7 +221,7 @@ class MQTTClient:
                 process_time = time.time() - start_time
                 module_logger.info(f"Message Processing Complete")
                 module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
-            elif f"{topic_base}units":
+            elif msg.topic == f"{topic_base}units" and self.stats_enable:
                 if msg.topic.split('/')[-1] == "call" and self.unit_log_type == "call":
                     if self.es:
                         call_data = data.get("call", {})
@@ -244,7 +245,7 @@ class MQTTClient:
                     process_time = time.time() - start_time
                     module_logger.info(f"Message Processing Complete")
                     module_logger.debug(f"Processing MQTT Message Took {round(process_time, 2)} seconds.")
-                elif msg.topic.split('/')[-1] == "end" and self.unit_log_type == "end":
+                elif msg.topic.split('/')[-1] == "end" and self.unit_log_type == "end" and self.stats_enable:
                     if self.es:
                         call_data = data.get("end", {})
                         unit_document = {
