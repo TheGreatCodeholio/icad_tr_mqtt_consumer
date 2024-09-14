@@ -120,7 +120,6 @@ class MQTTClient:
         module_logger.debug(f"MQTT - Exiting Queue Process Loop: {self.message_queue.qsize()}")
 
     def process_message(self, msg):
-        module_logger.debug("Processing message from queue.")
         start_time = time.time()
 
         try:
@@ -139,7 +138,6 @@ class MQTTClient:
                 module_logger.warning(f"No Instance ID")
 
             topic_base = self.topic.split("#")[0]
-            module_logger.debug(f"Topic Base: {topic_base}")
             if msg.topic == f"{topic_base}feeds/rates" and self.stats_enable:
                 for sys in data.get("rates", {}):
                     module_logger.debug(f"System: {sys['sys_name']}\nRate: {sys['decoderate']}")
