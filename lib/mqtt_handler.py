@@ -40,7 +40,7 @@ monitor_states = [
 
 
 class MQTTClient:
-    def __init__(self, global_config_data, num_workers=8):
+    def __init__(self, global_config_data, num_workers=32):
         self.es_config_data = global_config_data.get("elasticsearch", {})
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.global_config_data = global_config_data
@@ -95,8 +95,16 @@ class MQTTClient:
         self.disconnect()
 
     def on_message(self, client, userdata, msg):
-        module_logger.debug("Received Message, queuing for processing.")
-        self.message_queue.put(msg)
+        module_logger.debug("Received Message, submitting for processing.")
+        # Submit the message processing directly to the executor
+        future = self.executor.submit(self.process_message, msg)
+        future.add_done_callback(self.handle_processing_result)
+
+    def handle_processing_result(self, future):
+        exception = future.exception()
+        if exception:
+            module_logger.error(f"Exception in message processing: {exception}")
+            traceback.print_exception(type(exception), exception, exception.__traceback__)
 
     def process_messages(self):
         while not self.error_flag.is_set():  # Check if there's an error flag set to stop processing
@@ -298,8 +306,6 @@ class MQTTClient:
             self.disconnect()
 
         try:
-            # Start processing messages
-            self.executor.submit(self.process_messages)
             # Start the loop to process received messages
             self.client.loop_start()
         except Exception as e:
