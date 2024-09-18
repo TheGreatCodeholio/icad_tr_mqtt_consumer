@@ -95,7 +95,6 @@ class MQTTClient:
         self.disconnect()
 
     def on_message(self, client, userdata, msg):
-        module_logger.debug("Received Message, submitting for processing.")
         # Submit the message processing directly to the executor
         future = self.executor.submit(self.process_message, msg)
         future.add_done_callback(self.handle_processing_result)
