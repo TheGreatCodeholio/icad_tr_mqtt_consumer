@@ -139,6 +139,14 @@ class MQTTClient:
                 module_logger.debug(f"Payload size: {len(msg.payload)} bytes")
                 module_logger.debug(f"Decoded WAV data size: {wav_size} bytes ({wav_size_kb:.2f} KB)")
                 module_logger.debug(f"Message Metadata: {metadata}")
+                stop_time = metadata.get("stop_time")
+
+                if stop_time:
+                    # Assuming stop_time is a UNIX timestamp in seconds
+                    current_time = time.time()
+                    skew_time = current_time - stop_time  # In seconds
+                    skew_time_ms = skew_time * 1000  # Convert to milliseconds
+                    module_logger.debug(f"Skew Time: {skew_time:.2f} seconds ({skew_time_ms:.0f} ms)")
 
                 # Process the call data
                 process_mqtt_call(self.es, self.global_config_data, wav_data, metadata)
