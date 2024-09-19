@@ -59,7 +59,7 @@ class MQTTClient:
         self.error_flag = threading.Event()
 
         self.message_queue = queue.Queue()
-        self.executor = TrackingThreadPoolExecutor(max_workers=num_workers)
+        self.executor = TrackingThreadPoolExecutor()
 
         # Set the callbacks
         self.client.on_connect = self.on_connect
