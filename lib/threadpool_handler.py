@@ -25,6 +25,7 @@ class TrackingThreadPoolExecutor(ThreadPoolExecutor):
         future = super(TrackingThreadPoolExecutor, self).submit(wrapper_fn, *args, **kwargs)
         return future
 
+
     def _task_done(self):
         with self._lock:
             self._pending_tasks -= 1
@@ -33,6 +34,6 @@ class TrackingThreadPoolExecutor(ThreadPoolExecutor):
         with self._lock:
             return self._pending_tasks
 
-    def get_running_threads(self):
+    def get_running_tasks(self):
         with self._lock:
-            return len(self._threads)
+            return self._running_tasks
