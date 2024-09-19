@@ -100,17 +100,17 @@ class MQTTClient:
         future = self.executor.submit(self.process_message, msg)
         future.add_done_callback(self.handle_processing_result)
 
-        # Get the number of pending tasks and running threads
+        # Get the number of pending tasks and running tasks
         pending_tasks = self.executor.get_pending_tasks()
-        running_threads = self.executor.get_running_threads()
+        running_tasks = self.executor.get_running_threads()
 
         # Calculate the number of messages waiting for a thread
-        waiting_tasks = pending_tasks - running_threads
+        waiting_tasks = pending_tasks - running_tasks
         if waiting_tasks < 0:
-            waiting_tasks = 0  # Ensure waiting_tasks is not negative
+            waiting_tasks = 0
 
         module_logger.info(
-            f"Pending tasks: {pending_tasks}, Running threads: {running_threads}, Messages waiting for a thread: {waiting_tasks}")
+            f"Pending tasks: {pending_tasks}, Running threads: {running_tasks}, Messages waiting for a thread: {waiting_tasks}")
 
     def handle_processing_result(self, future):
         exception = future.exception()

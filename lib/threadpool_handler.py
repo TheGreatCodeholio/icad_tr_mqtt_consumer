@@ -6,15 +6,26 @@ class TrackingThreadPoolExecutor(ThreadPoolExecutor):
         super(TrackingThreadPoolExecutor, self).__init__(*args, **kwargs)
         self._lock = threading.Lock()
         self._pending_tasks = 0
+        self._running_tasks = 0
 
     def submit(self, fn, *args, **kwargs):
         with self._lock:
             self._pending_tasks += 1
-        future = super(TrackingThreadPoolExecutor, self).submit(fn, *args, **kwargs)
-        future.add_done_callback(self._task_done)
+
+        def wrapper_fn(*args, **kwargs):
+            with self._lock:
+                self._running_tasks += 1
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                with self._lock:
+                    self._running_tasks -= 1
+                    self._pending_tasks -= 1
+
+        future = super(TrackingThreadPoolExecutor, self).submit(wrapper_fn, *args, **kwargs)
         return future
 
-    def _task_done(self, future):
+    def _task_done(self):
         with self._lock:
             self._pending_tasks -= 1
 
