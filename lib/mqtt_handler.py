@@ -13,6 +13,7 @@ import logging
 
 from lib.call_processor import process_mqtt_call
 from lib.elasticsearch_handler import ElasticSearchClient
+from lib.threadpool_handler import TrackingThreadPoolExecutor
 
 module_logger = logging.getLogger('icad_tr_consumer.mqtt_client')
 
@@ -58,7 +59,7 @@ class MQTTClient:
         self.error_flag = threading.Event()
 
         self.message_queue = queue.Queue()
-        self.executor = ThreadPoolExecutor(max_workers=num_workers)
+        self.executor = TrackingThreadPoolExecutor(max_workers=num_workers)
 
         # Set the callbacks
         self.client.on_connect = self.on_connect
@@ -98,6 +99,18 @@ class MQTTClient:
         # Submit the message processing directly to the executor
         future = self.executor.submit(self.process_message, msg)
         future.add_done_callback(self.handle_processing_result)
+
+        # Get the number of pending tasks and running threads
+        pending_tasks = self.executor.get_pending_tasks()
+        running_threads = self.executor.get_running_threads()
+
+        # Calculate the number of messages waiting for a thread
+        waiting_tasks = pending_tasks - running_threads
+        if waiting_tasks < 0:
+            waiting_tasks = 0  # Ensure waiting_tasks is not negative
+
+        module_logger.info(
+            f"Pending tasks: {pending_tasks}, Running threads: {running_threads}, Messages waiting for a thread: {waiting_tasks}")
 
     def handle_processing_result(self, future):
         exception = future.exception()
@@ -139,6 +152,14 @@ class MQTTClient:
                 module_logger.debug(f"Payload size: {len(msg.payload)} bytes")
                 module_logger.debug(f"Decoded WAV data size: {wav_size} bytes ({wav_size_kb:.2f} KB)")
                 module_logger.debug(f"Message Metadata: {metadata}")
+
+                stop_time = metadata.get("stop_time")
+                if stop_time:
+                    # Assuming stop_time is a UNIX timestamp in seconds
+                    current_time = time.time()
+                    skew_time = current_time - stop_time  # In seconds
+                    skew_time_ms = skew_time * 1000  # Convert to milliseconds
+                    module_logger.warning(f"Skew Time: {skew_time:.2f} seconds ({skew_time_ms:.0f} s)")
 
                 # Process the call data
                 process_mqtt_call(self.es, self.global_config_data, wav_data, metadata)
