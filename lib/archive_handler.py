@@ -97,7 +97,7 @@ def archive_files(archive_config, source_path, call_data):
         else:
             module_logger.warning("Unknown Archive Extension")
 
-    if archive_config.get("archive_days", 0) >= 1:
+    if 1 <= archive_config.get("archive_days", 0) <= 9999:
         archive_class.clean_files(os.path.join(archive_config.get("archive_path"), system_short_name),
                                   archive_config.get("archive_days", 1))
 

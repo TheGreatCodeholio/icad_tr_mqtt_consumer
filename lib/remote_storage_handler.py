@@ -206,9 +206,7 @@ class SCPStorage:
         current_path = ""
 
         for part in parts[1:]:
-
             current_path = f'{current_path}/{part}'.replace("\\", "/")
-
             try:
                 sftp.stat(current_path)
             except FileNotFoundError:
@@ -227,75 +225,73 @@ class SCPStorage:
 
         for attempt in range(1, max_attempts + 1):
             try:
+                module_logger.debug(f"Attempt {attempt} to upload {source_file_path} to {destination_file_path}")
+
+                start_time = time.time()
                 with self._create_sftp_session() as (ssh_client, sftp):
+                    connection_time = time.time() - start_time
+                    module_logger.debug(f"Connected to {self.host} in {connection_time:.2f} seconds.")
+
+                    # Ensure directory exists
                     self.ensure_destination_directory_exists(sftp, os.path.dirname(destination_file_path))
 
+                    # Start file transfer
+                    file_transfer_start = time.time()
                     sftp.put(source_file_path, destination_file_path)
+                    file_transfer_time = time.time() - file_transfer_start
+                    module_logger.debug(f"Transferred {source_file_path} in {file_transfer_time:.2f} seconds.")
 
-                    # Encode the basename of the local_audio_path to ensure it's URL-safe
+                    # Encode the basename of the file
                     encoded_file_name = quote(os.path.basename(destination_file_path))
-
-                    # First, join the base URL with the current_date
                     url_with_date = urljoin(self.base_url + '/', destination_generated_path + '/')
-
-                    # Then, join the result with the encoded file name
                     return urljoin(url_with_date, encoded_file_name)
 
-            except Exception as error:  # Preferably catch more specific exceptions
+            except Exception as error:
                 traceback.print_exc()
                 module_logger.warning(f'Attempt {attempt} failed: {error}')
                 if attempt < max_attempts:
-                    time.sleep(5)
+                    time.sleep(5)  # Delay between retries
 
-        module_logger.error(f'All {max_attempts} attempts failed.')
+        module_logger.error(f'All {max_attempts} attempts failed to upload {source_file_path}.')
         return False
 
     def clean_files(self, archive_path, archive_days):
-        """Removes files older than a specified number of days within the remote archive path."""
-
-        def clean_directory(sftp, path, archive_seconds):
-            """Recursive function to traverse and clean directories."""
-            nonlocal count
-            for entry in sftp.listdir_attr(path):
-                remote_path = os.path.join(path, entry.filename)
-                if S_ISDIR(entry.st_mode):  # If entry is a directory, recurse into it
-                    clean_directory(sftp, remote_path, archive_seconds)
-                    # Try to remove the directory if it's empty
-                    try:
-                        sftp.rmdir(remote_path)
-                    except IOError:
-                        pass
-                else:
-                    if time.time() - entry.st_mtime >= archive_seconds:
-                        sftp.remove(remote_path)
-                        count += 1
-                        module_logger.debug(f"Successfully cleaned remote folder: {remote_path}")
+        """Cleans files and empty folders using a shell command on the remote server."""
+        find_files_command = f"find {archive_path} -type f -mtime +{archive_days} -exec rm -f {{}} \\;"
+        find_folders_command = f"find {archive_path} -type d -empty -exec rmdir {{}} \\;"
 
         try:
-            with self._create_sftp_session() as (ssh_client, sftp):
-                count = 0
-                clean_directory(sftp, archive_path, archive_days * 24 * 3600)
-                module_logger.info(f"Cleaned {count} files remotely.")
-                return count
+            with self._create_sftp_session() as (ssh_client, _):
+                # First, remove files
+                module_logger.debug(f"Running file cleanup command: {find_files_command}")
+                stdin, stdout, stderr = ssh_client.exec_command(find_files_command)
+                err = stderr.read().decode().strip()
+                if err:
+                    module_logger.error(f"Error during file cleanup: {err}")
+                else:
+                    module_logger.info("File cleanup completed.")
+
+                # Then, remove empty directories
+                module_logger.debug(f"Running folder cleanup command: {find_folders_command}")
+                stdin, stdout, stderr = ssh_client.exec_command(find_folders_command)
+                err = stderr.read().decode().strip()
+                if err:
+                    module_logger.error(f"Error during folder cleanup: {err}")
+                else:
+                    module_logger.info("Folder cleanup completed.")
+
         except Exception as e:
             module_logger.error(f"Error during remote cleanup: {e}")
-            return None
 
     @contextmanager
     def _create_sftp_session(self, timeout=15):
-        """Creates and manages an SFTP session using context management.
-
-        :return: Yields a tuple of SSH client and SFTP session.
-        :raises: FileNotFoundError if private key file doesn't exist.
-                  SSHException for other SSH connection errors.
-        """
+        """Creates and manages an SFTP session using context management."""
         ssh_client = SSHClient()
         ssh_client.load_system_host_keys()
         ssh_client.set_missing_host_key_policy(AutoAddPolicy())
         sftp = None
 
         try:
-
             ssh_connect_kwargs = {
                 "username": self.username,
                 "port": self.port,
@@ -304,7 +300,6 @@ class SCPStorage:
                 "timeout": timeout
             }
 
-            # Use the private key for authentication if specified
             if self.private_key_path and os.path.exists(self.private_key_path):
                 try:
                     private_key = RSAKey.from_private_key_file(self.private_key_path)
@@ -319,18 +314,23 @@ class SCPStorage:
             else:
                 raise ValueError("No valid authentication method provided.")
 
-            # Connect using either private key, password, or both
+            start_ssh_time = time.time()
             ssh_client.connect(self.host, **ssh_connect_kwargs)
+            ssh_connect_duration = time.time() - start_ssh_time
+            module_logger.debug(f"SSH connection to {self.host} established in {ssh_connect_duration:.2f} seconds.")
 
             sftp = ssh_client.open_sftp()
             yield ssh_client, sftp
+
         except SSHException as e:
             module_logger.error(f'SSH connection error: {e}')
             raise
         finally:
             if sftp:
                 sftp.close()
+                module_logger.debug("SFTP session closed.")
             ssh_client.close()
+            module_logger.debug("SSH connection closed.")
 
 
 class LocalStorage:

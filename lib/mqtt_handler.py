@@ -2,11 +2,9 @@
 
 import base64
 import json
-import queue
 import threading
 import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor
 
 import paho.mqtt.client as mqtt
 import logging
@@ -40,7 +38,7 @@ monitor_states = [
 
 
 class MQTTClient:
-    def __init__(self, global_config_data, num_workers=32):
+    def __init__(self, global_config_data):
         self.es_config_data = global_config_data.get("elasticsearch", {})
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.global_config_data = global_config_data
@@ -54,11 +52,8 @@ class MQTTClient:
         self.certfile = global_config_data.get("mqtt", {}).get("certfile", "")
         self.keyfile = global_config_data.get("mqtt", {}).get("keyfile", "")
         self.unit_log_type = global_config_data.get("mqtt", {}).get("unit_log_type", "")
-
-        self.error_flag = threading.Event()
-
-        self.message_queue = queue.Queue()
-        self.executor = ThreadPoolExecutor()
+        self.error_flag = False
+        self.thread_list = []
 
         # Set the callbacks
         self.client.on_connect = self.on_connect
@@ -75,7 +70,7 @@ class MQTTClient:
                 module_logger.info(f"MQTT - Connected to MQTT Broker Successfully")
             if reason_code > 0:
                 module_logger.error(f"MQTT - Error Connection to Broker {reason_code}")
-                self.error_flag.set()
+                self.error_flag = True
 
         client.subscribe(self.topic)
 
@@ -88,22 +83,19 @@ class MQTTClient:
                 module_logger.info(f"Successfully Subscribed to {self.topic}")
             if status_code >= 128:
                 module_logger.error(f"Error Subscribing to Topic {self.topic}: {sub_result}")
+                self.error_flag = True
 
     def on_disconnect(self, client, userdata, flags, reason_code, properties):
         module_logger.info(f"MQTT - Disconnected from Broker: {reason_code}")
-        self.error_flag.set()
         self.disconnect()
 
     def on_message(self, client, userdata, msg):
         # Submit the message processing directly to the executor
-        future = self.executor.submit(self.process_message, msg)
-        future.add_done_callback(self.handle_processing_result)
+        thread = threading.Thread(target=self.process_message, args=(msg,), daemon=True)
+        self.thread_list.append(thread)
 
-    def handle_processing_result(self, future):
-        exception = future.exception()
-        if exception:
-            module_logger.error(f"Exception in message processing: {exception}")
-            traceback.print_exception(type(exception), exception, exception.__traceback__)
+        thread.start()
+
 
     def process_message(self, msg):
         start_time = time.time()
@@ -291,7 +283,6 @@ class MQTTClient:
 
         except Exception as e:
             module_logger.error(f"An unexpected error occurred while connecting to MQTT: {e}")
-            self.error_flag.set()
             self.disconnect()
 
         try:
@@ -299,11 +290,13 @@ class MQTTClient:
             self.client.loop_start()
         except Exception as e:
             module_logger.error(f"An unexpected error occurred while running consumer. Exiting")
-            self.error_flag.set()
+            self.error_flag = True
             self.disconnect()
 
     def disconnect(self):
         module_logger.info("Disconnecting from MQTT Broker and shutting down all threads.")
         self.client.loop_stop()  # Stop the network loop
         self.client.disconnect()  # Disconnect the MQTT client
-        self.executor.shutdown(wait=True)  # Shutdown the executor, waiting for tasks to complete
+        self.error_flag = True
+        for thread in self.thread_list:
+            thread.join()

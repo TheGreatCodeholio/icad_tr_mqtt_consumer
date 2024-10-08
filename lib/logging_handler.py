@@ -44,7 +44,11 @@ class ColoredFormatter(logging.Formatter):
         for word in message.split():
             if word.startswith('<<') and word.endswith('>>'):
                 message = message.replace(word, f'{highlight_color}{word[2:-2]}{reset}')
-        return f'{time} {level_color}{level_name}:{reset} {level_icon} {message.replace(level_name + ": ", "")}'
+
+        # Include thread name in the output
+        thread_name = record.threadName
+
+        return f'{time} [{thread_name}] {level_color}{level_name}:{reset} {level_icon} {message.replace(level_name + ": ", "")}'
 
 
 class CustomLogger:
@@ -74,7 +78,7 @@ class CustomLogger:
 
         formatter = ColoredFormatter('%(message)s')
         console_handler.setFormatter(formatter)
-        file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s'))
+        file_handler.setFormatter(logging.Formatter('%(asctime)s [%(threadName)s] %(levelname)s: %(message)s'))
 
         self.logger.addHandler(console_handler)
         self.logger.addHandler(file_handler)

@@ -44,7 +44,7 @@ def main():
     mqtt_client.start_mqtt_connection()
 
     try:
-        while not mqtt_client.error_flag.is_set():
+        while not mqtt_client.error_flag:
             time.sleep(1)
     except KeyboardInterrupt as e:
         logger.info(f"Shutting Down MQTT Consumer: {e}")
