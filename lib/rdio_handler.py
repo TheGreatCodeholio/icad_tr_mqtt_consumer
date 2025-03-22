@@ -27,6 +27,7 @@ def upload_to_rdio(rdio_data, temp_path, call_data):
             # Prepare additional data for the post request
             data = {
                 "audioName": call_data['filename'],
+                "audio_url": call_data.get("audio_url"),
                 "audioType": "audio/x-wav",
                 "dateTime": formatted_time,
                 "frequencies": json.dumps(call_data.get('freqList', [])),

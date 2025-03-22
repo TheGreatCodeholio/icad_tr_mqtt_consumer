@@ -8,6 +8,7 @@ from lib.audio_file_handler import save_temporary_files, compress_wav_mp3, compr
 from lib.broadcastify_calls_handler import upload_to_broadcastify_calls
 from lib.config_handler import get_talkgroup_config
 from lib.icad_alerting_handler import upload_to_icad_alert
+from lib.icad_cloud_detect import upload_to_icad_cloud_detect
 from lib.icad_player_handler import upload_to_icad_player
 from lib.icad_tone_detect_legacy_handler import upload_to_icad_legacy
 from lib.openmhz_handler import upload_to_openmhz
@@ -136,6 +137,8 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
                                       os.path.join(global_config_data.get("temp_file_path", "/dev/shm"),
                                                    call_data.get("filename")), call_data)
 
+
+
     # Legacy Tone Detection
     for icad_detect in system_config.get("icad_tone_detect_legacy", []):
         if icad_detect.get("enabled", 0) == 1:
@@ -206,12 +209,18 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
         wav_url, m4a_url, mp3_url, json_url = archive_files(system_config.get("archive", {}),
                                                             global_config_data.get("temp_file_path", "/dev/shm"),
                                                             call_data)
-        if wav_url:
-            call_data["audio_wav_url"] = wav_url
         if m4a_url:
             call_data["audio_m4a_url"] = m4a_url
+            call_data["audio_url"] = m4a_url
         if mp3_url:
             call_data["audio_mp3_url"] = mp3_url
+            if not call_data.get("audio_url"):
+                call_data["audio_url"] = mp3_url
+        if wav_url:
+            call_data["audio_wav_url"] = wav_url
+            if not call_data.get("audio_url"):
+                call_data["audio_url"] = wav_url
+
 
         if wav_url is None and m4a_url is None and mp3_url is None and json_url is None:
             module_logger.error("No Files Uploaded to Archive")
@@ -286,6 +295,22 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
                 continue
         else:
             module_logger.warning(f"Trunk Player system is disabled: {tp.get('api_url')}")
+            continue
+
+    # iCAD Cloud Detect
+    for icad_cd in system_config.get("icad_cloud_detect", []):
+        if icad_cd.get('enabled', 0) == 1:
+            try:
+                if call_data.get('talkgroup') in icad_cd.get('allowed_talkgroups', []):
+                    upload_to_icad_cloud_detect(icad_cd, global_config_data.get("temp_file_path", "/dev/shm"), call_data)
+
+            except Exception as e:
+                module_logger.error(
+                    f"Failed to upload to iCAD Cloud Detect server: {icad_cd.get('api_url')}. Error: {str(e)}",
+                    exc_info=True)
+                continue
+        else:
+            module_logger.warning(f"iCAD Cloud Detect system is disabled: {icad_cd.get('api_url')}")
             continue
 
     # Upload to Alerting

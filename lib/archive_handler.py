@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from datetime import datetime
@@ -87,6 +88,7 @@ def archive_files(archive_config, source_path, call_data):
             else:
                 module_logger.warning("Skipping archive for MP3 file. File does not exist.")
         elif extension == ".json":
+            pass
             if os.path.isfile(source_json_path):
                 upload_response = archive_class.upload_file(source_json_path, destination_json_path,
                                                             generated_folder_path)
@@ -96,6 +98,38 @@ def archive_files(archive_config, source_path, call_data):
                 module_logger.warning("Skipping archive for JSON file. File does not exist.")
         else:
             module_logger.warning("Unknown Archive Extension")
+
+        if ".json" in archive_config.get('archive_extensions', []):
+            if os.path.isfile(source_json_path):
+                try:
+                    with open(source_json_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                except Exception as e:
+                    module_logger.warning(f"Could not load JSON for updating audio URLs: {e}")
+                    data = {}
+
+            if m4a_url_path:
+                data["audio_url"] = m4a_url_path
+            elif mp3_url_path:
+                data["audio_url"] = mp3_url_path
+            elif wav_url_path:
+                data["audio_url"] = wav_url_path
+            else:
+                data["audio_url"] = None
+
+            try:
+                with open(source_json_path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=4)
+            except Exception as e:
+                module_logger.warning(f"Could not save updated JSON file: {e}")
+
+            upload_response = archive_class.upload_file(
+                source_json_path, destination_json_path, generated_folder_path
+            )
+            if upload_response:
+                json_url_path = upload_response
+        else:
+            module_logger.warning("Skipping archive for JSON file. File does not exist.")
 
     if 1 <= archive_config.get("archive_days", 0) <= 9999:
         archive_class.clean_files(os.path.join(archive_config.get("archive_path"), system_short_name),
