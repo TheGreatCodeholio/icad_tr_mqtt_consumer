@@ -197,28 +197,24 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
 
     # Archive Audio Files
     if system_config.get("archive", {}).get("enabled", 0) == 1:
-        wav_url, m4a_url, mp3_url, json_url = archive_files(system_config.get("archive", {}),
+        wav_url, m4a_url, json_url = archive_files(system_config.get("archive", {}),
                                                             global_config_data.get("temp_file_path", "/dev/shm"),
                                                             call_data)
         if m4a_url:
             call_data["audio_m4a_url"] = m4a_url
             call_data["audio_url"] = m4a_url
-        if mp3_url:
-            call_data["audio_mp3_url"] = mp3_url
-            if not call_data.get("audio_url"):
-                call_data["audio_url"] = mp3_url
         if wav_url:
             call_data["audio_wav_url"] = wav_url
             if not call_data.get("audio_url"):
                 call_data["audio_url"] = wav_url
 
 
-        if wav_url is None and m4a_url is None and mp3_url is None and json_url is None:
+        if wav_url is None and m4a_url is None and json_url is None:
             module_logger.error("No Files Uploaded to Archive")
         else:
             module_logger.info(f"Archive Complete")
             module_logger.debug(
-                f"Url Paths:\n{call_data.get('audio_wav_url')}\n{call_data.get('audio_m4a_url')}\n{call_data.get('audio_mp3_url')}")
+                f"Url Paths:\n{call_data.get('audio_wav_url')}\n{call_data.get('audio_m4a_url')}\n")
 
     # Send to ElasticSearch
     if es:
