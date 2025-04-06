@@ -127,7 +127,7 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
     m4a_compresssion_cfg = audio_compression_cfg.get("m4a_audio_compression")
 
     if m4a_compresssion_cfg.get("enabled", False):
-        m4a_exists = compress_wav_m4a(system_config.get("audio_compression", {}), os.path.join(global_config_data.get("temp_file_path", "/dev/shm"), call_data.get("filename")), call_data)
+        m4a_exists = compress_wav_m4a(m4a_compresssion_cfg, os.path.join(global_config_data.get("temp_file_path", "/dev/shm"), call_data.get("filename")), call_data)
 
 
     # Legacy Tone Detection
