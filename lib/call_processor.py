@@ -4,10 +4,9 @@ import threading
 from typing import Set
 
 from lib.archive_handler import archive_files
-from lib.audio_file_handler import save_temporary_files, compress_wav_mp3, compress_wav_m4a, save_temporary_json_file, \
+from lib.audio_file_handler import save_temporary_files, compress_wav_m4a, save_temporary_json_file, \
     clean_temp_files
 from lib.broadcastify_calls_handler import upload_to_broadcastify_calls
-from lib.config_handler import get_talkgroup_config
 from lib.icad_alerting_handler import upload_to_icad_alert
 from lib.icad_cloud_detect import upload_to_icad_cloud_detect
 from lib.icad_player_handler import upload_to_icad_player
@@ -60,11 +59,6 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
     system_config = global_config_data.get("systems", {}).get(short_name, {})
     if not system_config:
         module_logger.warning("System configuration not in config data. Cannot Process")
-        return
-
-    talkgroup_config = get_talkgroup_config(system_config.get("talkgroup_config", {}), call_data)
-    if not talkgroup_config:
-        module_logger.warning("Talkgroup configuration not in config data. Cannot Process")
         return
 
     if system_config.get("duplicate_transmission_detection", {}).get("enabled", 0) == 1:
