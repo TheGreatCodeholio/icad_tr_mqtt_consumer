@@ -9,7 +9,6 @@ module_logger = logging.getLogger('icad_tr_consumer.archive')
 
 
 def archive_files(archive_config, source_path, call_data):
-    mp3_url_path = None
     wav_url_path = None
     m4a_url_path = None
     json_url_path = None
@@ -44,7 +43,6 @@ def archive_files(archive_config, source_path, call_data):
 
     wav_filename = call_data.get("filename")
     m4a_filename = wav_filename.replace(".wav", ".m4a")
-    mp3_file_name = wav_filename.replace(".wav", ".mp3")
     json_filename = wav_filename.replace(".wav", ".json")
 
     source_wav_path = os.path.join(source_path, wav_filename)
@@ -52,9 +50,6 @@ def archive_files(archive_config, source_path, call_data):
 
     source_m4a_path = os.path.join(source_path, m4a_filename)
     destination_m4a_path = os.path.join(folder_path, m4a_filename)
-
-    source_mp3_path = os.path.join(source_path, mp3_file_name)
-    destination_mp3_path = os.path.join(folder_path, mp3_file_name)
 
     source_json_path = os.path.join(source_path, json_filename)
     destination_json_path = os.path.join(folder_path, json_filename)
@@ -79,14 +74,6 @@ def archive_files(archive_config, source_path, call_data):
                     m4a_url_path = upload_response
             else:
                 module_logger.warning("Skipping archive for M4A file. File does not exist.")
-        elif extension == ".mp3":
-            if os.path.isfile(source_mp3_path):
-                upload_response = archive_class.upload_file(source_mp3_path, destination_mp3_path,
-                                                            generated_folder_path)
-                if upload_response:
-                    mp3_url_path = upload_response
-            else:
-                module_logger.warning("Skipping archive for MP3 file. File does not exist.")
         elif extension == ".json":
             pass
             if os.path.isfile(source_json_path):
@@ -107,15 +94,11 @@ def archive_files(archive_config, source_path, call_data):
                 except Exception as e:
                     module_logger.warning(f"Could not load JSON for updating audio URLs: {e}")
                     data = {}
-
-            if m4a_url_path:
-                data["audio_url"] = m4a_url_path
-            elif mp3_url_path:
-                data["audio_url"] = mp3_url_path
-            elif wav_url_path:
-                data["audio_url"] = wav_url_path
             else:
-                data["audio_url"] = None
+                data = {}
+
+            data["audio_m4a_url"] = m4a_url_path if m4a_url_path else ""
+            data["audio_wav_url"] = wav_url_path if wav_url_path else ""
 
             try:
                 with open(source_json_path, "w", encoding="utf-8") as f:
@@ -131,8 +114,8 @@ def archive_files(archive_config, source_path, call_data):
         else:
             module_logger.warning("Skipping archive for JSON file. File does not exist.")
 
-    if 1 <= archive_config.get("archive_days", 0) <= 9999:
+    if 1 <= archive_config.get("archive_days", 0) < 9999:
         archive_class.clean_files(os.path.join(archive_config.get("archive_path"), system_short_name),
                                   archive_config.get("archive_days", 1))
 
-    return wav_url_path, m4a_url_path, mp3_url_path, json_url_path
+    return wav_url_path, m4a_url_path, json_url_path

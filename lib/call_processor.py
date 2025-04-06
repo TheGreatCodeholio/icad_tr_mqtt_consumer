@@ -1,6 +1,7 @@
 import logging
 import os
 import threading
+from typing import Set
 
 from lib.archive_handler import archive_files
 from lib.audio_file_handler import save_temporary_files, compress_wav_mp3, compress_wav_m4a, save_temporary_json_file, \
@@ -25,6 +26,8 @@ message_history = {}
 # Lock for synchronizing access to message_history
 history_lock = threading.Lock()
 
+def talkgroup_is_allowed(talkgroup_decimal: int, allowed_talkgroups: Set[int]) -> bool:
+    return "*" in allowed_talkgroups or talkgroup_decimal in allowed_talkgroups
 
 def is_duplicate(message1, message2, time_tolerance=1, length_tolerance=1, check_same_instance_id=False):
     start_time1 = message1.get("start_time")
@@ -46,7 +49,7 @@ def is_duplicate(message1, message2, time_tolerance=1, length_tolerance=1, check
 
 def process_mqtt_call(es, global_config_data, wav_data, call_data):
     m4a_exists = False
-    mp3_exists = False
+
     short_name = call_data.get("short_name", "")
     talkgroup_decimal = call_data.get("talkgroup", 0)
 
@@ -126,17 +129,11 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
         return
 
     # Convert WAV to M4A in tmp /dev/shm
-    if system_config.get("audio_compression", {}).get("m4a_enabled", 0) == 1:
-        m4a_exists = compress_wav_m4a(system_config.get("audio_compression", {}),
-                                      os.path.join(global_config_data.get("temp_file_path", "/dev/shm"),
-                                                   call_data.get("filename")), call_data)
+    audio_compression_cfg = system_config.get("audio_compression", {})
+    m4a_compresssion_cfg = audio_compression_cfg.get("m4a_audio_compression")
 
-    # Convert WAV to M4A in tmp /dev/shm
-    if system_config.get("audio_compression", {}).get("mp3_enabled", 0) == 1:
-        mp3_exists = compress_wav_mp3(system_config.get("audio_compression", {}),
-                                      os.path.join(global_config_data.get("temp_file_path", "/dev/shm"),
-                                                   call_data.get("filename")), call_data)
-
+    if m4a_compresssion_cfg.get("enabled", False):
+        m4a_exists = compress_wav_m4a(system_config.get("audio_compression", {}), os.path.join(global_config_data.get("temp_file_path", "/dev/shm"), call_data.get("filename")), call_data)
 
 
     # Legacy Tone Detection
@@ -176,17 +173,17 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
         call_data["tones"] = {"hi_low_tone": [], "two_tone": [], "long_tone": []}
 
     # Transcribe Audio
-    if system_config.get("transcribe", {}).get("enabled", 0) == 1:
-        if talkgroup_decimal not in system_config.get("transcribe", {}).get("allowed_talkgroups",
-                                                                            []) and "*" not in system_config.get(
-            "transcribe", {}).get("allowed_talkgroups", []):
-            module_logger.debug(
-                f"Transcribe Disabled for Talkgroup {call_data.get('talkgroup_tag') or call_data.get('talkgroup')}")
+    transcribe_cfg = system_config.get("transcribe", {})
+    allowed_tgs = set(transcribe_cfg.get("allowed_talkgroups", []))
+
+    if transcribe_cfg.get("enabled", 0) == 1:
+        if not talkgroup_is_allowed(talkgroup_decimal, allowed_tgs):
+            module_logger.debug(f"Transcribe Disabled for Talkgroup {call_data.get('talkgroup_tag')}")
         else:
-            transcribe_result = upload_to_transcribe(system_config.get("transcribe", {}), wav_data, call_data,
-                                                     talkgroup_config=None)
+            transcribe_config_id = transcribe_cfg.get("transcribe_talkgroup_config", {}).get(str(talkgroup_decimal), 1)
+            transcribe_result = upload_to_transcribe(transcribe_cfg, wav_data, call_data, transcribe_config_id)
             call_data["transcript"] = transcribe_result
-            module_logger.info(f"Audio Transcribe Complete")
+            module_logger.info("Audio Transcribe Complete")
             module_logger.debug(call_data.get("transcript"))
     else:
         call_data["transcript"] = {"transcript": "No Transcribe configured", "segments": [], "process_time_seconds": 0,
