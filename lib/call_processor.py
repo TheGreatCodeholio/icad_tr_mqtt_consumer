@@ -9,6 +9,7 @@ from lib.audio_file_handler import save_temporary_files, compress_wav_m4a, save_
 from lib.broadcastify_calls_handler import upload_to_broadcastify_calls
 from lib.icad_alerting_handler import upload_to_icad_alert
 from lib.icad_cloud_detect import upload_to_icad_cloud_detect
+from lib.icad_dispatch import upload_to_icad_dispatch
 from lib.icad_player_handler import upload_to_icad_player
 from lib.icad_tone_detect_legacy_handler import upload_to_icad_legacy
 from lib.openmhz_handler import upload_to_openmhz
@@ -268,6 +269,26 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
             module_logger.warning(f"RDIO system is disabled: {rdio.get('rdio_url')}")
             continue
 
+    # Upload to iCAD Dispatch
+    if system_config.get("icad_dispatch", {}).get("enabled", 0) == 1:
+        if talkgroup_decimal not in system_config.get("icad_dispatch", {}).get("talkgroups",[]) and "*" not in system_config.get("icad_dispatch", {}).get("talkgroups", []):
+            module_logger.debug(
+                f"iCAD Dispatch Disabled for Talkgroup {call_data.get('talkgroup_tag') or call_data.get('talkgroup')}")
+
+        else:
+            if not m4a_exists:
+                module_logger.warning(f"No M4A file can't send to iCAD Dispatch")
+            else:
+                try:
+                    upload_to_icad_dispatch(system_config.get("icad_dispatch", {}), global_config_data.get("temp_file_path", "/dev/shm"), call_data)
+                    module_logger.info(f"Successfully uploaded to iCAD Dispatch server: {system_config.get("icad_dispatch", {}).get('url')}")
+                except Exception as e:
+                    module_logger.error(f"Failed to upload to iCAD Dispatch server: {system_config.get("icad_dispatch", {}).get('url')}. Error: {str(e)}",
+                                    exc_info=True)
+
+    else:
+        module_logger.warning(f"iCAD Dispatch is disabled: {system_config.get("icad_dispatch", {}).get('url')}")
+
     # Upload to Trunk Player
     for tp in system_config.get("trunk_player_systems", []):
         if tp.get("enabled", 0) == 1:
@@ -284,32 +305,7 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
             module_logger.warning(f"Trunk Player system is disabled: {tp.get('api_url')}")
             continue
 
-    # iCAD Cloud Detect
-    for icad_cd in system_config.get("icad_cloud_detect", []):
-        if icad_cd.get('enabled', 0) == 1:
-            try:
-                if call_data.get('talkgroup') in icad_cd.get('allowed_talkgroups', []):
-                    upload_to_icad_cloud_detect(icad_cd, global_config_data.get("temp_file_path", "/dev/shm"), call_data)
 
-            except Exception as e:
-                module_logger.error(
-                    f"Failed to upload to iCAD Cloud Detect server: {icad_cd.get('api_url')}. Error: {str(e)}",
-                    exc_info=True)
-                continue
-        else:
-            module_logger.warning(f"iCAD Cloud Detect system is disabled: {icad_cd.get('api_url')}")
-            continue
-
-    # Upload to Alerting
-    if system_config.get("icad_alerting", {}).get("enabled", 0) == 1:
-        if talkgroup_decimal not in system_config.get("icad_alerting", {}).get("allowed_talkgroups",
-                                                                               []) and "*" not in system_config.get(
-            "icad_alerting", {}).get("allowed_talkgroups", []):
-            module_logger.warning(
-                f"iCAD Alerting Disabled for Talkgroup {call_data.get('talkgroup_tag') or call_data.get('talkgroup_decimal')}")
-        else:
-            upload_to_icad_alert(system_config.get("icad_alerting", {}), call_data)
-            module_logger.info(f"Upload to iCAD Alert Complete")
 
     # Send To Webhooks
     for webhook in system_config.get("webhooks", []):
