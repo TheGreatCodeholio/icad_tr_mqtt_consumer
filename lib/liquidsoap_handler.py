@@ -7,7 +7,10 @@ from typing import Dict, Any, Optional
 module_logger = logging.getLogger("icad_tr_consumer.liquidsoap_handler")
 
 def _fmt(v): return "" if v is None else str(v)
-def _escape_liq_annot(v: str) -> str: return _fmt(v).replace("'", r"\'")
+
+def _escape_liq_annot(v: str) -> str:
+    # Escape backslashes and double quotes for annotate:... values
+    return _fmt(v).replace("\\", "\\\\").replace('"', r'\"')
 
 class _SafeDict(dict):
     def __missing__(self, key): return ""
@@ -152,27 +155,22 @@ def upload_to_broadcastify_icecast(ls_cfg: Dict[str, Any], temp_dir: str, call_d
     cmd = f"{queue_id}.push {annotate_uri}"
     try:
         resp = _send_liquidsoap_cmd(host, port, cmd, password=password)
-        resp_clean = (resp or "").strip()
+        resp_raw = resp or ""
+        resp_clean = resp_raw.strip()
 
-        # Treat a bare integer (request id) as success, as well as common success words.
-        is_numeric_id = resp_clean.isdigit()
-        looks_ok = bool(re.search(r"\b(queued|added|request|done|ok)\b", resp_clean, re.I))
+        m = re.match(r'^\s*(\d+)\s*(?:\r?\nEND)?\s*$', resp_raw)
+        is_numeric_id = bool(m)
+        looks_ok = bool(re.search(r'\b(queued|added|request|done|ok)\b', resp_clean, re.I))
 
         ok = is_numeric_id or looks_ok
-
         if ok:
-            if is_numeric_id:
-                module_logger.info(
-                    f"[liquidsoap] Enqueued (id={resp_clean}) -> {os.path.basename(staged_path)}"
-                )
+            rid = m.group(1) if is_numeric_id else None
+            if rid:
+                module_logger.info(f"[liquidsoap] Enqueued (id={rid}) -> {os.path.basename(staged_path)}")
             else:
-                module_logger.info(
-                    f"[liquidsoap] Enqueued -> {os.path.basename(staged_path)} | resp={resp_clean!r}"
-                )
+                module_logger.info(f"[liquidsoap] Enqueued -> {os.path.basename(staged_path)} | resp={resp_clean!r}")
         else:
-            module_logger.warning(
-                f"[liquidsoap] Unexpected response pushing request: {resp_clean!r}"
-            )
+            module_logger.warning(f"[liquidsoap] Unexpected response pushing request: {resp_clean!r}")
     except Exception:
         module_logger.exception("[liquidsoap] Failed to push request to Liquidsoap")
         ok = False
