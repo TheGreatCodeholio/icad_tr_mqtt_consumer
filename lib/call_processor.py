@@ -12,6 +12,7 @@ from lib.icad_cloud_detect import upload_to_icad_cloud_detect
 from lib.icad_dispatch import upload_to_icad_dispatch
 from lib.icad_player_handler import upload_to_icad_player
 from lib.icad_tone_detect_legacy_handler import upload_to_icad_legacy
+from lib.liquidsoap_handler import upload_to_broadcastify_icecast
 from lib.openmhz_handler import upload_to_openmhz
 from lib.rdio_handler import upload_to_rdio
 from lib.tone_detect_handler import get_tones
@@ -195,6 +196,20 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
         save_temporary_json_file(global_config_data.get("temp_file_path", "/dev/shm"), call_data)
     except Exception as e:
         module_logger.warning(f"Enable to save new call data to temporary file. {e}")
+
+    if system_config.get("broadcastify_icecast", {}).get("enabled", 0) == 1:
+        try:
+            ok = upload_to_broadcastify_icecast(
+                system_config.get("broadcastify_icecast", {}),
+                global_config_data.get("temp_file_path", "/dev/shm"),
+                call_data
+            )
+            if ok:
+                module_logger.info("Liquidsoap enqueue complete (Broadcastify Icecast).")
+            else:
+                module_logger.warning("Liquidsoap enqueue did not confirm success.")
+        except Exception as e:
+            module_logger.error(f"Liquidsoap enqueue failed: {e}", exc_info=True)
 
     # Archive Audio Files
     if system_config.get("archive", {}).get("enabled", 0) == 1:
