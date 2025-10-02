@@ -1,6 +1,7 @@
 # lib/liquidsoap_handler.py  (drop-in replacement or update the functions below)
 from __future__ import annotations
 import logging, os, shutil, socket, threading, time
+import re
 from typing import Dict, Any, Optional
 
 module_logger = logging.getLogger("icad_tr_consumer.liquidsoap_handler")
@@ -151,11 +152,27 @@ def upload_to_broadcastify_icecast(ls_cfg: Dict[str, Any], temp_dir: str, call_d
     cmd = f"{queue_id}.push {annotate_uri}"
     try:
         resp = _send_liquidsoap_cmd(host, port, cmd, password=password)
-        ok = ("Done" in resp) or ("queued" in resp) or ("request" in resp and "added" in resp) or ("> " in resp)
+        resp_clean = (resp or "").strip()
+
+        # Treat a bare integer (request id) as success, as well as common success words.
+        is_numeric_id = resp_clean.isdigit()
+        looks_ok = bool(re.search(r"\b(queued|added|request|done|ok)\b", resp_clean, re.I))
+
+        ok = is_numeric_id or looks_ok
+
         if ok:
-            module_logger.info(f"[liquidsoap] Enqueued -> {os.path.basename(staged_path)}")
+            if is_numeric_id:
+                module_logger.info(
+                    f"[liquidsoap] Enqueued (id={resp_clean}) -> {os.path.basename(staged_path)}"
+                )
+            else:
+                module_logger.info(
+                    f"[liquidsoap] Enqueued -> {os.path.basename(staged_path)} | resp={resp_clean!r}"
+                )
         else:
-            module_logger.warning(f"[liquidsoap] Unexpected response pushing request: {resp.strip()}")
+            module_logger.warning(
+                f"[liquidsoap] Unexpected response pushing request: {resp_clean!r}"
+            )
     except Exception:
         module_logger.exception("[liquidsoap] Failed to push request to Liquidsoap")
         ok = False
