@@ -12,6 +12,7 @@ module_logger = logging.getLogger('icad_tr_consumer.openmhz_uploader')
 def upload_to_openmhz(openmhz, temp_path, call_data):
     try:
         module_logger.info("Sending to OpenMHZ")
+        api_url = openmhz.get('api_url', "https://api.openmhz.com")
         api_key = openmhz.get('api_key')
         short_name = openmhz.get('short_name')
 
@@ -44,7 +45,7 @@ def upload_to_openmhz(openmhz, temp_path, call_data):
 
         session = requests.Session()
         response = session.post(
-            url=f"https://api.openmhz.com/{short_name}/upload",
+            url=f"{api_url}/{short_name}/upload",
             data=multipart_data,
             headers={'User-Agent': 'TrunkRecorder1.0', 'Content-Type': multipart_data.content_type}
         )
