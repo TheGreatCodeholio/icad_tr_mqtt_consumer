@@ -60,7 +60,7 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
 
     system_config = global_config_data.get("systems", {}).get(short_name, {})
     if not system_config:
-        module_logger.warning("System configuration not in config data. Cannot Process")
+        module_logger.warning("System configuration {short_name} not in config data. Cannot Process")
         return
 
     if system_config.get("duplicate_transmission_detection", {}).get("enabled", 0) == 1:
