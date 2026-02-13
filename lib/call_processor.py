@@ -240,12 +240,24 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
     # Send to Players
 
     # Upload to OpenMHZ
-    if system_config.get("openmhz", {}).get("enabled", 0) == 1:
-        if m4a_exists:
-            openmhz_result = upload_to_openmhz(system_config.get("openmhz", {}),
-                                               global_config_data.get("temp_file_path", "/dev/shm"), call_data)
+
+    for openmhz in system_config.get("openmhz", []):
+        if openmhz.get("enabled", 0) == 1:
+
+            if not m4a_exists:
+                module_logger.warning(f"No M4A file can't send to OpenMHZ: {openmhz.get('api_url')}")
+                continue
+            try:
+                upload_to_openmhz(openmhz, global_config_data.get("temp_file_path", "/dev/shm"), call_data)
+                module_logger.info(f"Successfully uploaded to OpenMHZ server: {openmhz.get('api_url')}")
+            except Exception as e:
+                module_logger.error(f"Failed to upload to OpenMHZ server: {openmhz.get('api_url')}. Error: {str(e)}",
+                                    exc_info=True)
+                continue
+
         else:
-            module_logger.warning(f"No M4A file can't send to OpenMHZ")
+            module_logger.warning(f"OpenMHZ is disabled: {openmhz.get('api_url')}")
+            continue
 
     # Upload to BCFY Calls
     if system_config.get("broadcastify_calls", {}).get("enabled", 0) == 1:
