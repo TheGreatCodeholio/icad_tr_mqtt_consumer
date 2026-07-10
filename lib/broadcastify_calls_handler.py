@@ -15,6 +15,7 @@ def send_request(method, url, **kwargs):
     Handles exceptions and logs errors with more context.
     """
     try:
+        kwargs.setdefault("timeout", (5, 30))
         response = requests.request(method, url, **kwargs)
         if response.status_code != 200:
             module_logger.error(
@@ -54,7 +55,7 @@ def upload_to_broadcastify_calls(broadcastify_config, temp_path, call_data):
 
             module_logger.debug(files)
 
-            response = requests.post(broadcastify_url, headers=headers, files=files)
+            response = requests.post(broadcastify_url, headers=headers, files=files, timeout=(5, 30))
             if response.status_code != 200:
                 module_logger.error(
                     f"Failed to upload to Broadcastify Calls: Status {response.status_code}, Response: {response.text}")
@@ -74,7 +75,7 @@ def upload_to_broadcastify_calls(broadcastify_config, temp_path, call_data):
             audio_data = audio_file.read()
 
             # Reuse the send_request function for the PUT request
-            upload_response = requests.put(upload_url,  headers={'Content-Type': 'audio/aac'}, data=audio_data)
+            upload_response = requests.put(upload_url,  headers={'Content-Type': 'audio/aac'}, data=audio_data, timeout=(5, 30))
             if upload_response.status_code != 200:
                 module_logger.error(f"Failed to post call to Broadcastify Calls AWS Failed: {upload_response.status_code}, Response: {response.text}")
                 return False

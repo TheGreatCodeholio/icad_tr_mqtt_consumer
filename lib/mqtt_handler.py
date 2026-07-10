@@ -2,7 +2,6 @@
 
 import base64
 import json
-import threading
 import time
 import traceback
 
@@ -11,6 +10,7 @@ import logging
 
 from lib.call_processor import process_mqtt_call
 from lib.elasticsearch_handler import ElasticSearchClient
+from lib.threadpool_handler import TrackingThreadPoolExecutor
 
 module_logger = logging.getLogger('icad_tr_consumer.mqtt_client')
 
@@ -53,7 +53,8 @@ class MQTTClient:
         self.keyfile = global_config_data.get("mqtt", {}).get("keyfile", "")
         self.unit_log_type = global_config_data.get("mqtt", {}).get("unit_log_type", "")
         self.error_flag = False
-        self.thread_list = []
+        max_workers = global_config_data.get("mqtt", {}).get("max_workers", 32)
+        self.executor = TrackingThreadPoolExecutor(max_workers=max_workers)
 
         # Set the callbacks
         self.client.on_connect = self.on_connect
@@ -90,11 +91,10 @@ class MQTTClient:
         self.disconnect()
 
     def on_message(self, client, userdata, msg):
-        # Submit the message processing directly to the executor
-        thread = threading.Thread(target=self.process_message, args=(msg,), daemon=True)
-        self.thread_list.append(thread)
-
-        thread.start()
+        # Submit the message processing to the bounded thread pool so a hung
+        # downstream call (e.g. an unresponsive RDIO/OpenMHZ endpoint) can't
+        # cause unbounded thread growth.
+        self.executor.submit(self.process_message, msg)
 
 
     def process_message(self, msg):
@@ -298,5 +298,4 @@ class MQTTClient:
         self.client.loop_stop()  # Stop the network loop
         self.client.disconnect()  # Disconnect the MQTT client
         self.error_flag = True
-        for thread in self.thread_list:
-            thread.join()
+        self.executor.shutdown(wait=True)

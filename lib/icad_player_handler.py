@@ -9,7 +9,7 @@ def upload_to_icad_player(player_config, call_data):
     module_logger.info(f'Uploading To iCAD Player: {url}')
 
     try:
-        response = requests.post(url, json=call_data)
+        response = requests.post(url, json=call_data, timeout=(5, 20))
 
         response.raise_for_status()
         module_logger.info(

@@ -33,7 +33,7 @@ def upload_to_icad_cloud_detect(cloud_detect_config, temp_path, call_data):
                 'jsonFile': (call_data['filename'].replace('.wav', '.json'), json_bytes, 'application/json')
             }
 
-            response = requests.post(url, headers=request_header, files=files)
+            response = requests.post(url, headers=request_header, files=files, timeout=(5, 30))
 
             response.raise_for_status()
             module_logger.info(f"Successfully uploaded to iCAD Cloud Detect: {url}")

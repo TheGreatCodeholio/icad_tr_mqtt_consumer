@@ -19,7 +19,7 @@ def upload_to_icad_legacy(icad_data, temp_path, call_data):
     try:
         with open(wav_path, 'rb') as audio_file:
             files = {'file': (wav_path, audio_file, 'audio/x-wav')}
-            response = requests.post(icad_data['icad_url'], files=files, data=call_data)
+            response = requests.post(icad_data['icad_url'], files=files, data=call_data, timeout=(5, 30))
             response.raise_for_status()  # This will raise an error for 4xx and 5xx responses
             module_logger.info(f'Successfully uploaded to iCAD API: {response.status_code}, {response.text}')
             return True

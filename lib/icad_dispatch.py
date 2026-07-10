@@ -59,7 +59,7 @@ def upload_to_icad_dispatch(icad_dispatch_data, temp_path, call_data):
 
     try:
         # This sends a multipart/form-data request with text fields + optional file
-        response = requests.post(icad_dispatch_data['url'], files=multipart_fields)
+        response = requests.post(icad_dispatch_data['url'], files=multipart_fields, timeout=(5, 30))
         response.raise_for_status()
 
         module_logger.info(f"Successfully uploaded to iCAD Dispatch: HTTP {response.status_code} - {response.text}")

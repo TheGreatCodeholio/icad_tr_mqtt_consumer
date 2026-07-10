@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import os
 import re
 import shutil
@@ -14,6 +15,7 @@ def convert_epoch_to_iso(epoch_timestamp) -> str:
 
 
 def save_temporary_json_file(tmp_path, call_data):
+    json_path = None
     try:
         json_path = os.path.join(tmp_path, call_data["filename"]).replace(".wav", ".json")
 
@@ -22,7 +24,7 @@ def save_temporary_json_file(tmp_path, call_data):
             json.dump(call_data, json_file, indent=4)
         module_logger.debug(f"JSON file saved successfully at {json_path}")
     except Exception as e:
-        module_logger.error(f"Failed to save JSON file at {json_path}: {e}")
+        module_logger.error(f"Failed to save JSON file at {json_path}: {e}", exc_info=True)
         raise  # Re-raise the exception to handle it in a higher-level function
 
 
@@ -69,6 +71,45 @@ def clean_temp_files(tmp_path, call_data):
 
     if os.path.isfile(json_path):
         os.remove(json_path)
+
+
+def _compress_single_pass(wav_file_path, m4a_file_path, sample_rate, bitrate, meta_args) -> bool:
+    command = [
+                  "ffmpeg",
+                  "-hide_banner",
+                  "-y",
+                  "-i", wav_file_path,
+                  "-ar", str(sample_rate),
+                  "-ac", "1",
+                  "-c:a", "aac",
+                  "-b:a", f"{bitrate}k"
+              ] + meta_args + [m4a_file_path]
+
+    module_logger.debug(f"Single pass command: {' '.join(command)}")
+
+    try:
+        completed_process = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        error_msg = (
+            f"ffmpeg single-pass compression failed.\n"
+            f"Command: {' '.join(command)}\n"
+            f"Output: {e.output}\nError: {e.stderr}"
+        )
+        module_logger.error(error_msg)
+        return False
+    except Exception as ex:
+        module_logger.error(f"An unexpected error occurred: {ex}")
+        return False
+
+    module_logger.debug(f"Single pass ffmpeg output: {completed_process.stdout}")
+    module_logger.debug(f"Single pass ffmpeg errors: {completed_process.stderr}")
+    module_logger.info(f"Successfully compressed '{wav_file_path}' to '{m4a_file_path}' without loudnorm.")
+    return True
 
 
 def compress_wav_m4a(compression_config, wav_file_path, call_data) -> bool:
@@ -194,6 +235,18 @@ def compress_wav_m4a(compression_config, wav_file_path, call_data) -> bool:
 
         stats = json.loads(match.group(0))
 
+        # Near-silent/silent audio produces non-finite measured values (e.g. "-inf" for
+        # input_i). ffmpeg's loudnorm second pass rejects those outright and never opens
+        # the output file, so fall back to single-pass (no normalization) instead.
+        measured_keys = ("input_i", "input_tp", "input_lra", "input_thresh")
+        non_finite_keys = [k for k in measured_keys if not math.isfinite(float(stats.get(k, "nan")))]
+        if non_finite_keys:
+            module_logger.warning(
+                f"loudnorm measured non-finite values {non_finite_keys} for {wav_file_path} "
+                f"(near-silent audio) — falling back to single-pass, no normalization"
+            )
+            return _compress_single_pass(wav_file_path, m4a_file_path, sample_rate, bitrate, meta_args)
+
         # The 'offset' might not be in the JSON so we parse it from text
         offset_match = re.search(r"offset\s*:\s*([-\d\.]+)", pass1_stderr)
         offset_val = float(offset_match.group(1)) if offset_match else 0.0
@@ -261,42 +314,7 @@ def compress_wav_m4a(compression_config, wav_file_path, call_data) -> bool:
             f"Converting WAV to M4A (single pass) at {sample_rate} Hz / {bitrate}k bitrate"
         )
 
-        command = [
-                      "ffmpeg",
-                      "-hide_banner",
-                      "-y",
-                      "-i", wav_file_path,
-                      "-ar", str(sample_rate),
-                      "-ac", "1",
-                      "-c:a", "aac",
-                      "-b:a", f"{bitrate}k"
-                  ] + meta_args + [m4a_file_path]
-
-        module_logger.debug(f"Single pass command: {' '.join(command)}")
-
-        try:
-            completed_process = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                check=True
-            )
-        except subprocess.CalledProcessError as e:
-            error_msg = (
-                f"ffmpeg single-pass compression failed.\n"
-                f"Command: {' '.join(command)}\n"
-                f"Output: {e.output}\nError: {e.stderr}"
-            )
-            module_logger.error(error_msg)
-            return False
-        except Exception as ex:
-            module_logger.error(f"An unexpected error occurred: {ex}")
-            return False
-
-        module_logger.debug(f"Single pass ffmpeg output: {completed_process.stdout}")
-        module_logger.debug(f"Single pass ffmpeg errors: {completed_process.stderr}")
-        module_logger.info(f"Successfully compressed '{wav_file_path}' to '{m4a_file_path}' without loudnorm.")
-        return True
+        return _compress_single_pass(wav_file_path, m4a_file_path, sample_rate, bitrate, meta_args)
 
 
 def compress_wav_mp3(compression_config, wav_file_path, call_data):

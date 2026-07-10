@@ -29,7 +29,7 @@ def upload_to_transcribe(transcribe_config, wav_data, call_data, talkgroup_confi
             'jsonFile': json_bytes
         }
 
-        response = requests.post(url, files=data, data=config_data)
+        response = requests.post(url, files=data, data=config_data, timeout=(5, 60))
         response.raise_for_status()  # This will raise an error for 4xx and 5xx responses
         response_json = response.json()
         module_logger.info(f'Successfully received transcript data from: {url}')

@@ -248,8 +248,9 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
                 module_logger.warning(f"No M4A file can't send to OpenMHZ: {openmhz.get('api_url')}")
                 continue
             try:
-                upload_to_openmhz(openmhz, global_config_data.get("temp_file_path", "/dev/shm"), call_data)
-                module_logger.info(f"Successfully uploaded to OpenMHZ server: {openmhz.get('api_url')}")
+                openmhz_result = upload_to_openmhz(openmhz, global_config_data.get("temp_file_path", "/dev/shm"), call_data)
+                if openmhz_result:
+                    module_logger.info(f"Successfully uploaded to OpenMHZ server: {openmhz.get('api_url')}")
             except Exception as e:
                 module_logger.error(f"Failed to upload to OpenMHZ server: {openmhz.get('api_url')}. Error: {str(e)}",
                                     exc_info=True)
@@ -276,8 +277,9 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
             module_logger.warning(
                 f"iCAD Player Disabled for Talkgroup {call_data.get('talkgroup_tag') or call_data.get('talkgroup_decimal')}")
         else:
-            upload_to_icad_player(system_config.get("icad_player", {}), call_data)
-            module_logger.info(f"Upload to iCAD Player Complete")
+            icad_player_result = upload_to_icad_player(system_config.get("icad_player", {}), call_data)
+            if icad_player_result:
+                module_logger.info(f"Upload to iCAD Player Complete")
 
     # Upload to RDIO systems
     for rdio in system_config.get("rdio_systems", []):
@@ -286,8 +288,9 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
                 module_logger.warning(f"No M4A file can't send to RDIO")
                 continue
             try:
-                upload_to_rdio(rdio, global_config_data.get("temp_file_path", "/dev/shm"), call_data)
-                module_logger.info(f"Successfully uploaded to RDIO server: {rdio.get('rdio_url')}")
+                rdio_result = upload_to_rdio(rdio, global_config_data.get("temp_file_path", "/dev/shm"), call_data)
+                if rdio_result:
+                    module_logger.info(f"Successfully uploaded to RDIO server: {rdio.get('rdio_url')}")
             except Exception as e:
                 module_logger.error(f"Failed to upload to RDIO server: {rdio.get('rdio_url')}. Error: {str(e)}",
                                     exc_info=True)
@@ -307,8 +310,9 @@ def process_mqtt_call(es, global_config_data, wav_data, call_data):
                 module_logger.warning(f"No M4A file can't send to iCAD Dispatch")
             else:
                 try:
-                    upload_to_icad_dispatch(system_config.get("icad_dispatch", {}), global_config_data.get("temp_file_path", "/dev/shm"), call_data)
-                    module_logger.info(f"Successfully uploaded to iCAD Dispatch server: {system_config.get("icad_dispatch", {}).get('url')}")
+                    dispatch_result = upload_to_icad_dispatch(system_config.get("icad_dispatch", {}), global_config_data.get("temp_file_path", "/dev/shm"), call_data)
+                    if dispatch_result:
+                        module_logger.info(f"Successfully uploaded to iCAD Dispatch server: {system_config.get("icad_dispatch", {}).get('url')}")
                 except Exception as e:
                     module_logger.error(f"Failed to upload to iCAD Dispatch server: {system_config.get("icad_dispatch", {}).get('url')}. Error: {str(e)}",
                                     exc_info=True)

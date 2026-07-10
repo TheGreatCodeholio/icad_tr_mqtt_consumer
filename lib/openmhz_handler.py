@@ -47,7 +47,8 @@ def upload_to_openmhz(openmhz, temp_path, call_data):
         response = session.post(
             url=f"{api_url}/{short_name}/upload",
             data=multipart_data,
-            headers={'User-Agent': 'TrunkRecorder1.0', 'Content-Type': multipart_data.content_type}
+            headers={'User-Agent': 'TrunkRecorder1.0', 'Content-Type': multipart_data.content_type},
+            timeout=(5, 30)
         )
 
         if response.status_code == 200:

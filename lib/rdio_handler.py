@@ -88,7 +88,7 @@ def upload_to_rdio(rdio_data, temp_path, call_data):
 
     try:
         # This sends a multipart/form-data request with text fields + optional file
-        response = requests.post(rdio_data['rdio_url'], files=multipart_fields)
+        response = requests.post(rdio_data['rdio_url'], files=multipart_fields, timeout=(5, 30))
         response.raise_for_status()
 
         module_logger.info(f"Successfully uploaded to RDIO: HTTP {response.status_code} - {response.text}")
